@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fullbay Pathfinder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#07080A;--surface:#0E1014;--surface2:#141618;--border:rgba(255,255,255,0.06);--border-hi:rgba(255,255,255,0.12);--text:#E4E4E0;--text-mid:#A0A09C;--text-lo:#505050;--fullbay:#60A5FA;--font-ui:'Inter',system-ui,sans-serif;--font-data:'JetBrains Mono',monospace}
+html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:var(--font-ui)}
+.shell{max-width:960px;margin:0 auto;padding:64px 24px 80px}
+.eyebrow{font-family:var(--font-data);font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--fullbay);margin-bottom:14px}
+h1{font-size:42px;font-weight:700;letter-spacing:-.03em;line-height:1.1;margin-bottom:16px}
+h1 em{font-style:normal;color:var(--fullbay)}
+.sub{font-size:16px;color:var(--text-mid);line-height:1.7;max-width:600px;margin-bottom:56px}
+.projects{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:64px}
+.project-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;text-decoration:none;color:inherit;transition:all .15s;display:flex;flex-direction:column;gap:10px}
+.project-card:hover{border-color:var(--border-hi);background:var(--surface2);transform:translateY(-2px)}
+.project-card.active{border-color:rgba(96,165,250,0.35);background:rgba(96,165,250,0.06)}
+.project-card.stub{opacity:0.55;cursor:default}
+.project-card.stub:hover{transform:none;border-color:var(--border)}
+.project-tag{font-family:var(--font-data);font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:2px 8px;border-radius:4px;border:1px solid;display:inline-block;width:fit-content}
+.tag-active{color:#4DB87A;border-color:rgba(77,184,122,.4);background:rgba(77,184,122,.1)}
+.tag-stub{color:var(--text-lo);border-color:rgba(255,255,255,.1);background:transparent}
+.tag-think-week{color:#FBBF24;border-color:rgba(251,191,36,.4);background:rgba(251,191,36,.08)}
+.project-name{font-size:18px;font-weight:700;line-height:1.2}
+.project-desc{font-size:13px;color:var(--text-mid);line-height:1.6;flex:1}
+.project-surfaces{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.surface-link{font-size:11px;font-family:var(--font-data);color:var(--fullbay);background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.25);border-radius:4px;padding:3px 8px;text-decoration:none;transition:all .15s}
+.surface-link:hover{background:rgba(96,165,250,.2)}
+.surface-stub{color:var(--text-lo);background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08)}
+.divider{height:1px;background:var(--border);margin:48px 0}
+.footer{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.footer-note{font-size:11px;color:var(--text-lo);font-family:var(--font-data)}
+.conf-pill{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#5A3E10;background:#3A2708;border:1px solid #6A4A12;border-radius:4px;padding:2px 7px;font-family:var(--font-data)}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="eyebrow">Fullbay &mdash; Product Research &amp; Innovation</div>
+  <h1>Fullbay <em>Pathfinder</em></h1>
+  <p class="sub">A directed exploration program for future product concepts. Each project tests a specific hypothesis about where the industry is going and how Fullbay can be there first. Built from field research, validated with real operators, designed for the PEO team to evaluate and act on.</p>
+
+  <div class="projects">
+    <a class="project-card active" href="pathfinder-x0/index.html">
+      <span class="project-tag tag-think-week">Think Week 2026</span>
+      <div class="project-name">Pathfinder X.0 &mdash; The Switzerland Hypothesis</div>
+      <div class="project-desc">Fullbay as the neutral protocol layer between autonomous fleet assets and repair facilities. The handshake starts at fault detection, not at arrival. The truck and the shop have never met &mdash; but they already have a deal.</div>
+      <div class="project-surfaces">
+        <a class="surface-link" href="pathfinder-x0/fullbay-yard-view.html" onclick="event.stopPropagation()">Yard View</a>
+        <a class="surface-link" href="pathfinder-x0/fullbay-fleet-manager.html" onclick="event.stopPropagation()">Fleet Manager</a>
+        <a class="surface-link" href="pathfinder-x0/switzerland-flow.html" onclick="event.stopPropagation()">Flow Map</a>
+      </div>
+    </a>
+    <div class="project-card stub">
+      <span class="project-tag tag-stub">In development</span>
+      <div class="project-name">Pathfinder Costco &mdash; The Membership Model</div>
+      <div class="project-desc">A membership and benefits layer for Fullbay shops and fleets. Seven benefit buckets. Tested conversationally before surfacing to leadership. Modeled on what operators said they actually wanted at Diesel Connect.</div>
+      <div class="project-surfaces">
+        <span class="surface-link surface-stub">Coming soon</span>
+      </div>
+    </div>
+    <div class="project-card stub">
+      <span class="project-tag tag-stub">In development</span>
+      <div class="project-name">Pathfinder Market &mdash; Parts Marketplace</div>
+      <div class="project-desc">A peer-to-peer parts marketplace connecting Fullbay shops. Two field sites surfaced this independently without prompting. Shop-to-shop trust is the design problem. The technology is the easy part.</div>
+      <div class="project-surfaces">
+        <span class="surface-link surface-stub">Coming soon</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+  <div class="footer">
+    <span class="footer-note">Fullbay &mdash; PEO Research &amp; Innovation &mdash; Joel Barr, UXR</span>
+    <span class="conf-pill">Internal &mdash; Confidential</span>
+  </div>
+</div>
+</body>
+</html>
