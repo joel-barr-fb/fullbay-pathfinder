@@ -1,1 +1,1570 @@
-Yard view
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fullbay X — Yard View</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#09090B; --surface:#111114; --surface2:#18181C; --surface3:#222428;
+  --chrome:#1A1C1E; --border:rgba(255,255,255,0.07); --border-hi:rgba(255,255,255,0.14);
+  --text:#E4E4E0; --text-mid:#C0C0BC; --text-lo:#666662;
+  --font-ui:'Inter',system-ui,sans-serif; --font-data:'JetBrains Mono',monospace;
+  --fullbay:#60A5FA; --radius:8px; --font-scale:1;
+
+  /* Agent colors — base palette */
+  --agent-c3po:#60A5FA; --agent-r2d2:#38C4F0; --agent-bb8:#FBBF24;
+  --agent-l337:#34D399; --agent-k2so:#94A3B8; --agent-lobot:#F472B6;
+  --agent-ig11:#EF4444; --agent-chopper:#FB923C; --agent-k3po:#E2E8F0;
+  --agent-mc80a:#A78BFA;
+
+  /* Semantic state colors — base */
+  --state-locked:#EF4444; --state-released:#34D399;
+  --state-ontrack:#34D399; --state-overrun:#EF4444;
+  --state-verified:#94A3B8; --state-pending:#666662;
+
+  /* Customer heat */
+  --c0:#38C4F0; --c0bg:#0C1E28; --c0bd:#1A4A5E;
+  --c1:#4DB87A; --c1bg:#0A1C12; --c1bd:#1A4A2A;
+  --c2:#9AB830; --c2bg:#181E06; --c2bd:#3C4A0C;
+  --c3:#E8A020; --c3bg:#281C04; --c3bd:#6A4A08;
+  --c4:#F06820; --c4bg:#2C1006; --c4bd:#782808;
+  --c5:#E03030; --c5bg:#280606; --c5bd:#720C0C;
+  --c6:#A01010; --c6bg:#1C0404; --c6bd:#600808;
+
+  /* Own fleet heat */
+  --o0:#7C9EF0; --o0bg:#0C1030; --o0bd:#1E2A70;
+  --o3:#C050D0; --o3bg:#1E0828; --o3bd:#601068;
+  --o6:#A01850; --o6bg:#1C0408; --o6bd:#600418;
+
+  /* En route heat — silver/steel, K-3PO managed */
+  --r0:#B8C8D8; --r0bg:#0E141A; --r0bd:#2A3A4A;
+  --r1:#9AB0C4; --r1bg:#0C1218; --r1bd:#243040;
+}
+
+/* Colorblind mode — swaps semantic pairs only */
+body.colorblind{
+  --state-locked:#F59E0B; --state-released:#60A5FA;
+  --state-ontrack:#22D3EE; --state-overrun:#F97316;
+  --state-verified:#818CF8; --state-pending:#94A3B8;
+  --agent-ig11:#F59E0B; --agent-l337:#22D3EE; --agent-k2so:#818CF8;
+}
+
+body.light{
+  --bg:#F4F4F2; --surface:#FFFFFF; --surface2:#F0F0EE; --surface3:#E8E8E6;
+  --chrome:#FFFFFF; --border:rgba(0,0,0,0.08); --border-hi:rgba(0,0,0,0.14);
+  --text:#18181A; --text-mid:#666662; --text-lo:#AAAAAA;
+}
+body.grayscale{ filter:grayscale(1) contrast(1.35); }
+
+html,body{ height:100%; font-family:var(--font-ui); background:var(--bg); color:var(--text);
+  overflow:hidden; font-size:calc(14px * var(--font-scale)); }
+
+#app{ display:grid; grid-template-rows:36px 52px 1fr 44px; height:100vh; }
+
+/* ── System nav ── */
+#sys-nav{ background:#070709; border-bottom:1px solid rgba(96,165,250,0.2);
+  display:flex; align-items:center; padding:0 18px; height:36px; flex-shrink:0; gap:0; }
+.sys-logo{ font-family:var(--font-data); font-size:11px; font-weight:700; color:var(--fullbay);
+  letter-spacing:.12em; text-transform:uppercase; margin-right:20px; }
+.sys-logo span{ color:rgba(96,165,250,0.4); font-weight:400; }
+.nav-link{ font-size:11px; font-weight:600; letter-spacing:.05em; text-transform:uppercase;
+  color:rgba(255,255,255,0.28); padding:0 14px; height:36px; display:flex; align-items:center;
+  border-bottom:2px solid transparent; transition:all .15s; cursor:pointer; font-family:var(--font-data); text-decoration:none; }
+.nav-link:hover{ color:rgba(255,255,255,0.6); }
+.nav-link.active{ color:var(--fullbay); border-bottom-color:var(--fullbay); }
+.nav-link.stub{ color:rgba(255,255,255,0.15); cursor:default; }
+.nav-divider{ width:1px; height:18px; background:rgba(255,255,255,0.07); margin:0 4px; }
+
+/* MC80A orchestrator status */
+.mc80a-status{ display:flex; align-items:center; gap:6px; padding:0 12px;
+  border-left:1px solid rgba(255,255,255,0.07); margin-left:8px; }
+.mc80a-dot{ width:7px; height:7px; border-radius:50%; background:var(--agent-mc80a);
+  box-shadow:0 0 6px var(--agent-mc80a); animation:mc80a-pulse 3s ease-in-out infinite; }
+@keyframes mc80a-pulse{ 0%,100%{opacity:1} 50%{opacity:0.5} }
+.mc80a-label{ font-size:10px; font-family:var(--font-data); color:var(--agent-mc80a);
+  font-weight:700; letter-spacing:.06em; }
+.mc80a-state{ font-size:10px; color:rgba(255,255,255,0.35); font-family:var(--font-data); }
+.mc80a-conflict{ color:#F59E0B !important; }
+
+.sys-nav-right{ margin-left:auto; display:flex; align-items:center; gap:6px; }
+.a11y-group{ display:flex; align-items:center; gap:4px; padding:0 8px;
+  border-left:1px solid rgba(255,255,255,0.07); }
+.a11y-group-label{ font-size:9px; font-family:var(--font-data); color:rgba(255,255,255,0.2);
+  letter-spacing:.08em; text-transform:uppercase; margin-right:2px; }
+.mode-btn{ background:none; border:1px solid rgba(255,255,255,0.1); border-radius:5px;
+  color:rgba(255,255,255,0.35); font-size:10px; font-weight:700; letter-spacing:.05em;
+  text-transform:uppercase; padding:3px 7px; cursor:pointer; font-family:var(--font-data);
+  transition:all .15s; white-space:nowrap; }
+.mode-btn:hover{ color:rgba(255,255,255,0.75); border-color:rgba(255,255,255,0.22); }
+.mode-btn.on{ border-color:rgba(96,165,250,0.5); color:#60A5FA; background:rgba(96,165,250,0.08); }
+.mode-btn.on.cb{ border-color:rgba(167,139,250,0.5); color:#A78BFA; background:rgba(167,139,250,0.08); }
+.mode-btn.on.gs{ border-color:rgba(148,163,184,0.5); color:#94A3B8; }
+.prototype-pill{ font-size:9px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+  color:#5A3E10; background:#3A2708; border:1px solid #6A4A12; border-radius:4px;
+  padding:2px 7px; font-family:var(--font-data); margin-left:4px; }
+
+/* ── Header ── */
+header{ background:var(--chrome); border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between; padding:0 18px; gap:12px; }
+.header-left{ display:flex; align-items:center; gap:10px; }
+.wordmark{ font-size:13px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
+.wordmark span{ color:var(--text-lo); font-weight:400; }
+.divider-v{ width:1px; height:18px; background:var(--border); }
+.header-right{ display:flex; align-items:center; gap:8px; }
+.btn{ background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:6px;
+  color:var(--text-mid); font-size:11px; font-family:var(--font-ui); font-weight:600;
+  letter-spacing:.05em; text-transform:uppercase; padding:5px 10px; cursor:pointer;
+  transition:all .15s; white-space:nowrap; }
+.btn:hover{ border-color:rgba(255,255,255,0.2); color:var(--text); background:rgba(255,255,255,0.09); }
+.btn.active{ border-color:#4DB87A; color:#4DB87A; background:rgba(77,184,122,0.1); }
+.btn.primary{ border-color:rgba(96,165,250,0.5); color:#60A5FA; background:rgba(96,165,250,0.12); }
+.btn.primary:hover{ background:rgba(96,165,250,0.22); }
+.btn.handshake{ border-color:rgba(52,211,153,0.5); color:#34D399; background:rgba(52,211,153,0.1);
+  animation:hs-btn-pulse 2s ease-in-out infinite; }
+@keyframes hs-btn-pulse{ 0%,100%{box-shadow:0 0 0 0 rgba(52,211,153,0)} 50%{box-shadow:0 0 8px 2px rgba(52,211,153,0.25)} }
+.live-dot{ width:7px; height:7px; border-radius:50%; background:#34D399;
+  box-shadow:0 0 6px #34D399; animation:livepulse 2.4s ease-in-out infinite; flex-shrink:0; }
+@keyframes livepulse{ 0%,100%{opacity:1} 50%{opacity:.4} }
+.clock{ font-size:11px; font-family:var(--font-data); color:var(--text-lo); }
+
+/* ── Location switcher ── */
+.loc-switcher{ position:relative; }
+.loc-btn{ display:flex; align-items:center; gap:7px; background:rgba(255,255,255,0.04);
+  border:1px solid var(--border); border-radius:6px; padding:5px 10px; cursor:pointer;
+  transition:all .15s; max-width:260px; }
+.loc-btn:hover{ border-color:rgba(255,255,255,0.16); background:rgba(255,255,255,0.08); }
+.loc-btn-name{ font-size:12px; font-weight:600; color:var(--text); white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis; max-width:160px; }
+.loc-btn-type{ font-size:10px; color:var(--text-lo); white-space:nowrap; }
+.loc-btn-chevron{ color:var(--text-lo); font-size:10px; flex-shrink:0; transition:transform .15s; }
+.loc-btn.open .loc-btn-chevron{ transform:rotate(180deg); }
+.loc-type-dot{ width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.loc-type-dot.shop{ background:#4DB87A; } .loc-type-dot.remote{ background:#38C4F0; }
+.loc-type-dot.branch{ background:#E8A020; }
+.loc-dropdown{ position:absolute; top:calc(100% + 6px); left:0; width:310px;
+  background:var(--surface2); border:1px solid var(--border-hi); border-radius:10px;
+  box-shadow:0 12px 40px rgba(0,0,0,.7); z-index:400; display:none; overflow:hidden; }
+.loc-dropdown.open{ display:block; }
+.loc-group-label{ font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--text-lo); padding:10px 14px 5px; font-family:var(--font-data); }
+.loc-option{ display:flex; align-items:center; gap:10px; padding:9px 14px; cursor:pointer; transition:background .1s; }
+.loc-option:hover{ background:rgba(255,255,255,0.06); }
+.loc-option.active{ background:rgba(255,255,255,0.04); }
+.loc-option-text{ flex:1; min-width:0; }
+.loc-option-name{ font-size:13px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.loc-option-sub{ font-size:11px; color:var(--text-lo); margin-top:1px; }
+.loc-option-count{ font-size:11px; font-family:var(--font-data); color:var(--text-lo); flex-shrink:0; }
+.loc-active-check{ color:#4DB87A; font-size:13px; flex-shrink:0; }
+.loc-divider{ height:1px; background:var(--border); margin:3px 0; }
+.loc-stub-note{ padding:8px 14px 12px; font-size:11px; color:var(--text-lo); border-top:1px solid var(--border); line-height:1.5; }
+
+/* ── Yard ── */
+#yard-wrap{ position:relative; overflow:hidden; }
+#yard{ position:absolute; inset:0; display:grid; grid-template-rows:1fr 1fr 1fr 1fr; }
+#yard::before{ content:''; position:absolute; inset:0; pointer-events:none; z-index:1;
+  background:radial-gradient(ellipse at 50% 40%,transparent 28%,rgba(0,0,0,0.4) 100%); }
+
+/* ── Lane ── */
+.lane{ display:flex; flex-direction:column; border-bottom:1px solid rgba(255,255,255,0.04);
+  padding:8px 16px 6px; min-height:0; }
+.lane:last-child{ border-bottom:none; }
+.lane-header{ display:flex; align-items:center; gap:10px; margin-bottom:6px; flex-shrink:0; z-index:2; position:relative; }
+.lane-tag{ font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase;
+  font-family:var(--font-data); padding:2px 8px; border-radius:99px; border:1px solid; white-space:nowrap; }
+.lane-tag.enroute{ color:#B8C8D8; background:rgba(184,200,216,0.1); border-color:rgba(184,200,216,0.3); }
+.lane-tag.inbound{ color:#38C4F0; background:rgba(56,196,240,0.1); border-color:rgba(56,196,240,0.3); }
+.lane-tag.inprogress{ color:#E8A020; background:rgba(232,160,32,0.1); border-color:rgba(232,160,32,0.3); }
+.lane-tag.outbound{ color:#4DB87A; background:rgba(77,184,122,0.1); border-color:rgba(77,184,122,0.3); }
+.lane-count{ font-size:11px; color:var(--text-lo); font-family:var(--font-data); }
+.lane-agent{ font-size:10px; font-family:var(--font-data); font-weight:700; letter-spacing:.04em; }
+.lane-desc{ font-size:11px; color:var(--text-lo); margin-left:auto; }
+.truck-row{ display:flex; flex-wrap:wrap; gap:7px; align-content:flex-start; z-index:2; position:relative; overflow:hidden; }
+
+/* ── Truck cell ── */
+.truck{ width:90px; min-height:60px; border-radius:var(--radius); border:1.5px solid;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  cursor:pointer; position:relative; transition:transform .12s, box-shadow .12s;
+  user-select:none; padding:4px 3px; gap:1px; }
+.truck:hover{ transform:scale(1.07); z-index:10; }
+.truck:focus{ outline:2px solid var(--fullbay); outline-offset:2px; }
+.truck-icon{ font-size:14px; line-height:1; }
+.truck-unit{ font-family:var(--font-data); font-size:calc(11px * var(--font-scale)); font-weight:700; line-height:1; letter-spacing:.01em; }
+.truck-dwell{ font-size:calc(9px * var(--font-scale)); opacity:0.7; margin-top:1px; font-family:var(--font-data); }
+.truck-agent{ font-size:calc(8px * var(--font-scale)); opacity:0.65; font-family:var(--font-data); letter-spacing:.02em; }
+.truck-book{ font-size:calc(8px * var(--font-scale)); font-family:var(--font-data); margin-top:1px; font-weight:700; }
+.truck-eta{ font-size:calc(8px * var(--font-scale)); font-family:var(--font-data); opacity:0.75; margin-top:1px; }
+
+/* Customer heat */
+.cust.d0{background:var(--c0bg);border-color:var(--c0bd);color:var(--c0);box-shadow:0 0 10px rgba(56,196,240,.12)}
+.cust.d1{background:var(--c1bg);border-color:var(--c1bd);color:var(--c1)}
+.cust.d2{background:var(--c2bg);border-color:var(--c2bd);color:var(--c2);box-shadow:0 0 12px rgba(154,184,48,.15)}
+.cust.d3{background:var(--c3bg);border-color:var(--c3bd);color:var(--c3);box-shadow:0 0 16px rgba(232,160,32,.25)}
+.cust.d4{background:var(--c4bg);border-color:var(--c4bd);color:var(--c4);box-shadow:0 0 20px rgba(240,104,32,.32)}
+.cust.d5{background:var(--c5bg);border-color:var(--c5bd);color:var(--c5);box-shadow:0 0 24px rgba(224,48,48,.42)}
+.cust.d6{background:var(--c6bg);border-color:var(--c6bd);color:var(--c6);box-shadow:0 0 30px rgba(160,16,16,.58)}
+
+/* Own fleet heat */
+.own.d0{background:var(--o0bg);border-color:var(--o0bd);color:var(--o0);border-style:dashed}
+.own.d1{background:#0E1228;border-color:#243068;color:#8898E8;border-style:dashed}
+.own.d2{background:#160A26;border-color:#381666;color:#A060D8;border-style:dashed;box-shadow:0 0 12px rgba(160,96,216,.15)}
+.own.d3{background:var(--o3bg);border-color:var(--o3bd);color:var(--o3);border-style:dashed;box-shadow:0 0 16px rgba(192,80,208,.22)}
+.own.d4{background:#240820;border-color:#640A50;color:#D03AAA;border-style:dashed;box-shadow:0 0 20px rgba(208,58,170,.3)}
+.own.d5{background:#220610;border-color:#600830;color:#D02880;border-style:dashed;box-shadow:0 0 24px rgba(208,40,128,.38)}
+.own.d6{background:var(--o6bg);border-color:var(--o6bd);color:var(--o6);border-style:dashed;box-shadow:0 0 28px rgba(160,24,80,.5)}
+
+/* En route units — K-3PO silver, dashed */
+.enroute-unit{ background:var(--r0bg); border-color:var(--r0bd); color:var(--r0);
+  border-style:dashed; box-shadow:0 0 10px rgba(184,200,216,.1); }
+.enroute-unit .truck-eta{ color:var(--agent-k3po); }
+
+/* Badges */
+.priority-badge{ position:absolute; top:-6px; right:-5px; width:15px; height:15px;
+  border-radius:50%; background:#E03030; border:1.5px solid var(--bg);
+  font-size:9px; font-weight:700; color:#fff; display:flex; align-items:center; justify-content:center; }
+.lock-badge{ position:absolute; bottom:-5px; right:-5px; width:16px; height:16px;
+  border-radius:4px; border:1.5px solid var(--bg); font-size:9px;
+  display:flex; align-items:center; justify-content:center; }
+.lock-badge.locked{ background:var(--state-locked); }
+.lock-badge.released{ background:var(--state-released); }
+
+/* Animations */
+@keyframes arrive{ 0%{opacity:0;transform:scale(0.5) translateY(-10px)} 65%{transform:scale(1.1)} 100%{opacity:1;transform:scale(1)} }
+.truck.arriving{ animation:arrive .5s ease-out forwards; }
+@keyframes alert-pulse{ 0%,100%{box-shadow:0 0 30px rgba(160,16,16,.58)} 50%{box-shadow:0 0 48px rgba(224,48,48,.85),0 0 16px rgba(224,48,48,.4)} }
+.truck.alert{ animation:alert-pulse 1.8s ease-in-out infinite; }
+@keyframes enroute-pulse{ 0%,100%{opacity:1} 50%{opacity:0.7} }
+.enroute-unit{ animation:enroute-pulse 3s ease-in-out infinite; }
+
+@media(prefers-reduced-motion:reduce){ .truck,.live-dot,.truck.alert,.truck.arriving,.enroute-unit,.btn.handshake,.mc80a-dot{ animation:none!important; transition:none!important; } }
+
+/* ── Tooltip ── */
+#tooltip{ position:fixed; z-index:200; width:324px; background:var(--surface2);
+  border:1px solid var(--border-hi); border-radius:12px; box-shadow:0 16px 48px rgba(0,0,0,.75);
+  display:none; overflow:hidden; }
+#tooltip.visible{ display:block; }
+.tip-header{ padding:12px 14px 10px; display:flex; justify-content:space-between;
+  align-items:flex-start; border-bottom:1px solid var(--border); }
+.tip-unit{ font-family:var(--font-data); font-size:calc(18px * var(--font-scale)); font-weight:700; line-height:1; }
+.tip-meta{ font-size:calc(11px * var(--font-scale)); color:var(--text-lo); margin-top:3px; }
+.tip-dwell-badge{ font-size:11px; font-weight:700; font-family:var(--font-data); padding:3px 8px; border-radius:99px; border:1px solid; }
+.tip-agent-row{ display:flex; align-items:center; gap:8px; padding:8px 14px; border-bottom:1px solid var(--border); }
+.tip-agent-dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.tip-agent-name{ font-family:var(--font-data); font-weight:700; font-size:calc(11px * var(--font-scale)); }
+.tip-agent-action{ color:var(--text-lo); flex:1; font-size:calc(11px * var(--font-scale)); }
+.tip-lock-row{ display:flex; align-items:center; gap:8px; padding:7px 14px; border-bottom:1px solid var(--border); }
+.tip-lock-icon{ font-size:13px; }
+.tip-lock-text{ font-size:calc(11px * var(--font-scale)); font-family:var(--font-data); font-weight:700; }
+.tip-lock-text.locked{ color:var(--state-locked); }
+.tip-lock-text.released{ color:var(--state-released); }
+.tip-lock-label{ font-size:10px; color:var(--text-lo); margin-left:4px; }
+.tip-book-row{ padding:8px 14px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; }
+.tip-book-label{ font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--text-lo); font-family:var(--font-data); white-space:nowrap; }
+.tip-book-bar{ flex:1; height:6px; background:rgba(255,255,255,0.08); border-radius:3px; overflow:hidden; }
+.tip-book-fill{ height:100%; border-radius:3px; transition:width .3s; }
+.tip-book-vals{ font-size:calc(10px * var(--font-scale)); font-family:var(--font-data); color:var(--text-mid); white-space:nowrap; }
+.tip-eta-row{ padding:7px 14px; border-bottom:1px solid var(--border); font-size:calc(11px * var(--font-scale)); color:var(--agent-k3po); font-family:var(--font-data); display:flex; align-items:center; gap:8px; }
+.tip-so-link{ display:flex; align-items:center; gap:6px; padding:8px 14px; background:rgba(255,255,255,0.03); font-size:calc(12px * var(--font-scale)); font-weight:600; color:#60A5FA; border-bottom:1px solid var(--border); cursor:pointer; }
+.tip-so-link:hover{ background:rgba(96,165,250,.1); }
+.tip-section-label{ font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--text-lo); padding:10px 14px 4px; font-family:var(--font-data); }
+.tip-history{ padding:0 14px 10px; max-height:150px; overflow-y:auto; }
+.tip-history::-webkit-scrollbar{ width:3px; } .tip-history::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.1); border-radius:2px; }
+.history-item{ display:grid; grid-template-columns:58px 1fr; gap:8px; padding:5px 0; border-bottom:1px solid rgba(255,255,255,.04); }
+.history-item:last-child{ border-bottom:none; }
+.history-date{ font-family:var(--font-data); font-size:10px; color:var(--text-lo); line-height:1.4; white-space:pre; }
+.history-type{ font-size:calc(11px * var(--font-scale)); font-weight:600; color:var(--text); line-height:1.3; }
+.history-tech{ font-size:10px; color:var(--text-lo); margin-top:1px; }
+.tip-notes{ padding:8px 14px 12px; font-size:calc(11px * var(--font-scale)); color:var(--text-mid); line-height:1.5; border-top:1px solid var(--border); }
+.tip-close{ position:absolute; top:10px; right:10px; width:22px; height:22px; border-radius:50%; border:none; background:rgba(255,255,255,.07); color:var(--text-lo); font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.tip-close:hover{ background:rgba(255,255,255,.14); color:var(--text); }
+
+/* ── Context menu ── */
+#ctx-menu{ position:fixed; z-index:300; width:210px; background:var(--surface3); border:1px solid var(--border-hi); border-radius:8px; box-shadow:0 8px 32px rgba(0,0,0,.6); padding:4px; display:none; }
+#ctx-menu.visible{ display:block; }
+.ctx-item{ padding:8px 12px; border-radius:5px; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:8px; color:var(--text); }
+.ctx-item:hover{ background:rgba(255,255,255,.07); }
+.ctx-item.danger{ color:#E06060; } .ctx-item.danger:hover{ background:rgba(224,96,96,.1); }
+.ctx-divider{ height:1px; background:var(--border); margin:3px 0; }
+
+/* ── Modals ── */
+.modal-overlay{ position:fixed; inset:0; z-index:400; background:rgba(0,0,0,.65); display:none; align-items:center; justify-content:center; }
+.modal-overlay.visible{ display:flex; }
+.modal{ background:var(--surface2); border:1px solid var(--border-hi); border-radius:14px; width:440px; max-width:95vw; box-shadow:0 24px 64px rgba(0,0,0,.8); overflow:hidden; }
+.modal-header{ padding:16px 18px 14px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+.modal-title{ font-size:15px; font-weight:700; }
+.modal-close{ background:none; border:none; color:var(--text-lo); font-size:18px; cursor:pointer; padding:2px 6px; border-radius:4px; }
+.modal-close:hover{ color:var(--text); background:rgba(255,255,255,.07); }
+.modal-body{ padding:18px; display:flex; flex-direction:column; gap:14px; }
+.form-row{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.field{ display:flex; flex-direction:column; gap:5px; }
+.field.full{ grid-column:1/-1; }
+label{ font-size:11px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--text-lo); }
+input,select{ background:var(--surface3); border:1px solid var(--border-hi); border-radius:6px; color:var(--text); font-size:13px; font-family:var(--font-ui); padding:8px 10px; outline:none; transition:border-color .15s; }
+input:focus,select:focus{ border-color:rgba(96,165,250,.6); }
+select option{ background:var(--surface2); }
+.modal-footer{ padding:12px 18px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:8px; }
+.btn-modal{ padding:8px 18px; border-radius:6px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid; transition:all .15s; }
+.btn-modal.cancel{ background:transparent; border-color:var(--border-hi); color:var(--text-lo); }
+.btn-modal.cancel:hover{ color:var(--text); }
+.btn-modal.confirm{ background:rgba(96,165,250,.15); border-color:rgba(96,165,250,.4); color:#7AB8F0; }
+.btn-modal.confirm:hover{ background:rgba(96,165,250,.28); }
+.btn-modal.danger-confirm{ background:rgba(224,96,96,.12); border-color:rgba(224,96,96,.35); color:#E06060; }
+.btn-modal.danger-confirm:hover{ background:rgba(224,96,96,.25); }
+.vin-row{ display:flex; gap:8px; } .vin-row input{ flex:1; }
+.btn-scan{ background:rgba(52,211,153,.1); border:1px solid rgba(52,211,153,.3); border-radius:6px; color:#34D399; font-size:11px; font-weight:700; padding:0 12px; cursor:pointer; white-space:nowrap; transition:all .15s; font-family:var(--font-ui); letter-spacing:.04em; text-transform:uppercase; }
+.btn-scan.scanning{ color:#E8A020; border-color:rgba(232,160,32,.4); background:rgba(232,160,32,.1); animation:scanblink .6s ease-in-out infinite alternate; }
+@keyframes scanblink{ from{opacity:.7} to{opacity:1} }
+.vin-hint{ font-size:10px; color:var(--text-lo); margin-top:3px; }
+.vin-hint.success{ color:#34D399; } .vin-hint.scanning{ color:#E8A020; }
+.confirm-body{ padding:18px; font-size:14px; color:var(--text-mid); line-height:1.6; }
+.confirm-body strong{ color:var(--text); font-family:var(--font-data); }
+
+/* ── Handshake modal ── */
+.handshake-anim{ padding:20px 18px 12px; text-align:center; }
+.handshake-icon{ font-size:44px; margin-bottom:8px; animation:hs-bounce .8s ease-in-out infinite alternate; }
+@keyframes hs-bounce{ from{transform:scale(0.94)} to{transform:scale(1.06)} }
+.handshake-title{ font-size:16px; font-weight:700; color:var(--fullbay); margin-bottom:6px; }
+.handshake-sub{ font-size:13px; color:var(--text-mid); line-height:1.6; margin-bottom:16px; }
+.agent-fire-list{ display:flex; flex-direction:column; gap:6px; padding:0 18px 18px; }
+.agent-fire-item{ display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:8px;
+  background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07);
+  opacity:0; transform:translateY(6px); transition:all .3s; }
+.agent-fire-item.fired{ opacity:1; transform:translateY(0); }
+.agent-fire-dot{ width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.agent-fire-name{ font-family:var(--font-data); font-size:11px; font-weight:700; white-space:nowrap; }
+.agent-fire-action{ font-size:12px; color:var(--text-mid); flex:1; }
+.agent-fire-status{ font-size:10px; font-family:var(--font-data); font-weight:700; opacity:0; transition:opacity .2s; }
+.agent-fire-item.fired .agent-fire-status{ opacity:1; }
+
+/* ── List view ── */
+#list-view{ position:absolute; inset:0; background:var(--bg); overflow-y:auto; display:none; z-index:5; }
+#list-view.visible{ display:block; }
+.list-table{ width:100%; border-collapse:collapse; }
+.list-table thead th{ position:sticky; top:0; background:var(--chrome); padding:10px 14px;
+  text-align:left; font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--text-lo); border-bottom:1px solid var(--border); white-space:nowrap; font-family:var(--font-data); }
+.list-table tbody tr{ border-bottom:1px solid rgba(255,255,255,.03); cursor:pointer; transition:background .1s; }
+.list-table tbody tr:hover{ background:rgba(255,255,255,.03); }
+.list-table tbody tr.expanded{ background:rgba(255,255,255,.04); }
+.list-table tbody td{ padding:9px 14px; color:var(--text); vertical-align:middle;
+  font-size:calc(13px * var(--font-scale)); }
+td.unit{ font-family:var(--font-data); font-weight:700; }
+.list-dwell-pill{ display:inline-block; font-family:var(--font-data); font-size:11px; font-weight:700; padding:2px 8px; border-radius:99px; border:1px solid; }
+.list-lane-tag{ font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; padding:2px 7px; border-radius:99px; border:1px solid; font-family:var(--font-data); }
+.lt-enroute{ color:#B8C8D8; border-color:rgba(184,200,216,.3); background:rgba(184,200,216,.07); }
+.lt-inbound{ color:#38C4F0; border-color:rgba(56,196,240,.3); background:rgba(56,196,240,.07); }
+.lt-inprogress{ color:#E8A020; border-color:rgba(232,160,32,.3); background:rgba(232,160,32,.07); }
+.lt-outbound{ color:#4DB87A; border-color:rgba(77,184,122,.3); background:rgba(77,184,122,.07); }
+.list-own-badge{ font-size:10px; color:#A060D8; background:rgba(160,96,216,.1); border:1px solid rgba(160,96,216,.3); border-radius:4px; padding:1px 5px; margin-left:4px; font-family:var(--font-data); }
+.list-lock{ font-size:11px; font-family:var(--font-data); font-weight:700; }
+.list-lock.locked{ color:var(--state-locked); }
+.list-lock.released{ color:var(--state-released); }
+
+/* List view expanded history row */
+.list-history-row td{ padding:0; }
+.list-history-inner{ padding:12px 14px 16px 72px; border-top:1px solid var(--border); }
+.list-history-item{ display:grid; grid-template-columns:64px 1fr; gap:8px; padding:5px 0;
+  border-bottom:1px solid rgba(255,255,255,.04); font-size:calc(11px * var(--font-scale)); }
+.list-history-item:last-child{ border-bottom:none; }
+.list-history-date{ font-family:var(--font-data); color:var(--text-lo); font-size:10px; white-space:pre; line-height:1.4; }
+.list-history-type{ font-weight:600; color:var(--text); }
+.list-history-tech{ color:var(--text-lo); font-size:10px; }
+.expand-chevron{ display:inline-block; transition:transform .2s; margin-left:6px; font-size:10px; color:var(--text-lo); }
+tr.expanded .expand-chevron{ transform:rotate(180deg); }
+
+/* ── Footer ── */
+footer{ background:var(--chrome); border-top:1px solid var(--border); display:flex; align-items:center; gap:12px; padding:0 18px; flex-shrink:0; overflow:hidden; }
+.legend-label{ font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--text-lo); white-space:nowrap; font-family:var(--font-data); }
+.legend-items{ display:flex; align-items:center; gap:10px; }
+.legend-item{ display:flex; align-items:center; gap:5px; font-size:11px; color:var(--text-mid); white-space:nowrap; }
+.lswatch{ width:18px; height:11px; border-radius:3px; border:1.5px solid transparent; flex-shrink:0; }
+.lswatch.dashed{ border-style:dashed; }
+.ldiv{ width:1px; height:18px; background:var(--border); flex-shrink:0; }
+.stat-items{ display:flex; gap:12px; margin-left:auto; flex-shrink:0; }
+.stat-item{ display:flex; align-items:baseline; gap:3px; }
+.stat-n{ font-family:var(--font-data); font-size:15px; font-weight:700; }
+.stat-l{ font-size:10px; color:var(--text-lo); white-space:nowrap; }
+
+/* ── Toast ── */
+#toast{ position:fixed; bottom:58px; left:50%; transform:translateX(-50%);
+  background:rgba(18,18,22,0.96); border:1px solid var(--border-hi); border-radius:8px;
+  padding:8px 16px; font-size:12px; color:var(--text-mid); z-index:500;
+  opacity:0; transition:opacity .25s; pointer-events:none; white-space:nowrap; max-width:80vw; text-align:center; }
+#toast.show{ opacity:1; }
+.sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+</style>
+</head>
+<body>
+<div id="app">
+
+<nav id="sys-nav" aria-label="Fullbay X navigation">
+  <span class="sys-logo">Fullbay <span>X.0</span></span>
+  <div class="nav-link active" aria-current="page">Yard View</div>
+  <div class="nav-divider"></div>
+  <div class="nav-link stub" title="Surface 3 - coming soon">Handshake Event</div>
+  <div class="nav-divider"></div>
+  <div class="nav-link stub" title="Surface 2 - coming soon">Fleet Manager</div>
+  <!-- MC80A orchestrator status -->
+  <div class="mc80a-status">
+    <div class="mc80a-dot" id="mc80a-dot"></div>
+    <span class="mc80a-label">MC80A</span>
+    <span class="mc80a-state" id="mc80a-state">All systems nominal</span>
+  </div>
+  <div class="sys-nav-right">
+    <div class="a11y-group">
+      <span class="a11y-group-label">View</span>
+      <button class="mode-btn" id="btn-dark-light" onclick="toggleDarkLight()">Light</button>
+    </div>
+    <div class="a11y-group">
+      <span class="a11y-group-label">A11y</span>
+      <button class="mode-btn" id="btn-colorblind" onclick="toggleColorblind()" title="Colorblind-safe palette">CB</button>
+      <button class="mode-btn" id="btn-grayscale" onclick="toggleGrayscale()" title="High contrast grayscale">GS</button>
+      <button class="mode-btn" id="btn-fontsize" onclick="cycleFontSize()" title="Increase font size">A</button>
+    </div>
+    <span class="prototype-pill">Prototype</span>
+  </div>
+</nav>
+
+<header>
+  <div class="header-left">
+    <span class="wordmark">Yard View <span>/ Shop Dispatch</span></span>
+    <div class="divider-v"></div>
+    <div class="loc-switcher">
+      <button class="loc-btn" id="loc-btn" onclick="toggleLocDropdown()">
+        <div class="loc-type-dot shop" id="loc-dot"></div>
+        <span class="loc-btn-name" id="loc-btn-name">Integrity Fleet Services</span>
+        <span class="loc-btn-type" id="loc-btn-type">&nbsp;· Houston, TX</span>
+        <span class="loc-btn-chevron">&#9662;</span>
+      </button>
+      <div class="loc-dropdown" id="loc-dropdown">
+        <div class="loc-group-label">Shop locations</div>
+        <div class="loc-option active" data-loc="integrity-houston" onclick="switchLocation(this)">
+          <div class="loc-type-dot shop"></div>
+          <div class="loc-option-text"><div class="loc-option-name">Integrity Fleet Services</div><div class="loc-option-sub">Houston, TX &middot; Main shop</div></div>
+          <span class="loc-option-count">19 units</span>
+          <span class="loc-active-check">&#10003;</span>
+        </div>
+        <div class="loc-divider"></div>
+        <div class="loc-group-label">Remote customer yards</div>
+        <div class="loc-option" data-loc="lone-star-yard" onclick="switchLocation(this)">
+          <div class="loc-type-dot remote"></div>
+          <div class="loc-option-text"><div class="loc-option-name">Lone Star Freight &mdash; Yard A</div><div class="loc-option-sub">Pasadena, TX &middot; Mobile service</div></div>
+          <span class="loc-option-count">8 units</span>
+        </div>
+        <div class="loc-option" data-loc="gulf-transport-yard" onclick="switchLocation(this)">
+          <div class="loc-type-dot remote"></div>
+          <div class="loc-option-text"><div class="loc-option-name">Gulf Transport LLC &mdash; Depot</div><div class="loc-option-sub">Baytown, TX &middot; Mobile service</div></div>
+          <span class="loc-option-count">22 units</span>
+        </div>
+        <div class="loc-divider"></div>
+        <div class="loc-group-label">Branch locations</div>
+        <div class="loc-option" onclick="stubBranch()">
+          <div class="loc-type-dot branch"></div>
+          <div class="loc-option-text"><div class="loc-option-name">+ Add branch location</div><div class="loc-option-sub">Link another shop to this account</div></div>
+        </div>
+        <div class="loc-stub-note">Remote yards and branch locations are research stubs &mdash; scope TBD with product team.</div>
+      </div>
+    </div>
+  </div>
+  <div class="header-right">
+    <button class="btn" id="btn-own-fleet" onclick="toggleOwnFleet()">Show own fleet</button>
+    <button class="btn" id="btn-view" onclick="toggleView()">List view</button>
+    <button class="btn handshake" onclick="openHandshakeDemo()">&#x1F50C; Simulate Arrival</button>
+    <button class="btn primary" onclick="openAddModal()">+ Add unit</button>
+    <div class="live-dot"></div>
+    <span class="clock" id="clock">--:--</span>
+  </div>
+</header>
+
+<div id="yard-wrap">
+  <div id="yard">
+    <div class="lane" id="lane-enroute">
+      <div class="lane-header">
+        <span class="lane-tag enroute">Inbound &mdash; En Route</span>
+        <span class="lane-count" id="count-enroute">0 units</span>
+        <span class="lane-agent" style="color:var(--agent-k3po)">K-3PO routing</span>
+        <span class="lane-agent" style="color:var(--agent-lobot)">&#x2022; Lobot pre-auth</span>
+        <span class="lane-agent" style="color:var(--agent-bb8)">&#x2022; BB-8 staging</span>
+        <span class="lane-desc">Autonomous units inbound &mdash; geofence not yet acquired</span>
+      </div>
+      <div class="truck-row" id="row-enroute"></div>
+    </div>
+    <div class="lane" id="lane-inbound">
+      <div class="lane-header">
+        <span class="lane-tag inbound">Inbound</span>
+        <span class="lane-count" id="count-inbound">0 units</span>
+        <span class="lane-desc">Arrived &mdash; awaiting assignment</span>
+      </div>
+      <div class="truck-row" id="row-inbound"></div>
+    </div>
+    <div class="lane" id="lane-inprogress">
+      <div class="lane-header">
+        <span class="lane-tag inprogress">In Progress</span>
+        <span class="lane-count" id="count-inprogress">0 units</span>
+        <span class="lane-agent" style="color:var(--agent-l337)">L3-37 monitoring</span>
+        <span class="lane-desc">Actively being serviced</span>
+      </div>
+      <div class="truck-row" id="row-inprogress"></div>
+    </div>
+    <div class="lane" id="lane-outbound">
+      <div class="lane-header">
+        <span class="lane-tag outbound">Outbound</span>
+        <span class="lane-count" id="count-outbound">0 units</span>
+        <span class="lane-desc">Complete &mdash; awaiting IG-11 release &amp; pickup</span>
+      </div>
+      <div class="truck-row" id="row-outbound"></div>
+    </div>
+  </div>
+  <div id="list-view">
+    <table class="list-table">
+      <thead><tr><th>Unit</th><th>Type</th><th>Customer</th><th>Lane</th><th>Dwell / ETA</th><th>Agent</th><th>Lock</th><th>SO</th><th></th></tr></thead>
+      <tbody id="list-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<footer>
+  <span class="legend-label">Customer</span>
+  <div class="legend-items">
+    <div class="legend-item"><div class="lswatch" style="background:#0C1E28;border-color:#1A4A5E"></div>&lt;1h</div>
+    <div class="legend-item"><div class="lswatch" style="background:#281C04;border-color:#6A4A08"></div>8-16h</div>
+    <div class="legend-item"><div class="lswatch" style="background:#1C0404;border-color:#600808"></div>48h+</div>
+  </div>
+  <div class="ldiv"></div>
+  <span class="legend-label">Own fleet</span>
+  <div class="legend-items">
+    <div class="legend-item"><div class="lswatch dashed" style="background:#0C1030;border-color:#1E2A70"></div>violet</div>
+  </div>
+  <div class="ldiv"></div>
+  <span class="legend-label">En route</span>
+  <div class="legend-items">
+    <div class="legend-item"><div class="lswatch dashed" style="background:#0E141A;border-color:#2A3A4A"></div>K-3PO silver</div>
+  </div>
+  <div class="ldiv"></div>
+  <div class="legend-item"><span>&#128274;</span>&nbsp;<span style="color:var(--state-locked)">Locked</span></div>
+  <div class="legend-item"><span>&#128275;</span>&nbsp;<span style="color:var(--state-released)">Released</span></div>
+  <div class="ldiv"></div>
+  <div class="stat-items" id="stats"></div>
+</footer>
+</div>
+
+<!-- Tooltip -->
+<div id="tooltip" role="dialog" aria-label="Unit details">
+  <button class="tip-close" onclick="closeTooltip()">&#x2715;</button>
+  <div class="tip-header">
+    <div><div class="tip-unit" id="tip-unit">--</div><div class="tip-meta" id="tip-meta">--</div></div>
+    <div class="tip-dwell-badge" id="tip-dwell-badge">--</div>
+  </div>
+  <div class="tip-agent-row" id="tip-agent-row">
+    <div class="tip-agent-dot" id="tip-agent-dot"></div>
+    <span class="tip-agent-name" id="tip-agent-name">--</span>
+    <span class="tip-agent-action" id="tip-agent-action">--</span>
+  </div>
+  <div class="tip-lock-row" id="tip-lock-row">
+    <span class="tip-lock-icon" id="tip-lock-icon">&#128274;</span>
+    <span class="tip-lock-text" id="tip-lock-text">--</span>
+    <span class="tip-lock-label" id="tip-lock-label"></span>
+  </div>
+  <div class="tip-book-row" id="tip-book-row">
+    <span class="tip-book-label">L3-37</span>
+    <div class="tip-book-bar"><div class="tip-book-fill" id="tip-book-fill"></div></div>
+    <span class="tip-book-vals" id="tip-book-vals">--</span>
+  </div>
+  <div class="tip-eta-row" id="tip-eta-row">
+    <span>&#128205;</span><span id="tip-eta-text">--</span>
+  </div>
+  <div class="tip-so-link" onclick="fakeSoClick()"><span>&#8599;</span><span id="tip-so-text">Open service order</span></div>
+  <div class="tip-section-label">Work history</div>
+  <div class="tip-history" id="tip-history"></div>
+  <div class="tip-notes" id="tip-notes-wrap">
+    <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-lo);margin-bottom:4px;font-family:var(--font-data)">Tech notes</div>
+    <span id="tip-notes"></span>
+  </div>
+</div>
+
+<!-- Context menu -->
+<div id="ctx-menu" role="menu">
+  <div class="ctx-item" onclick="ctxMoveToLane('enroute')" role="menuitem">&#x2B06; Move to En Route</div>
+  <div class="ctx-item" onclick="ctxMoveToLane('inbound')" role="menuitem">&#x2B07; Move to Inbound</div>
+  <div class="ctx-item" onclick="ctxMoveToLane('inprogress')" role="menuitem">&#128295; Move to In Progress</div>
+  <div class="ctx-item" onclick="ctxMoveToLane('outbound')" role="menuitem">&#x2713; Move to Outbound</div>
+  <div class="ctx-divider"></div>
+  <div class="ctx-item" onclick="ctxEdit()" role="menuitem">&#9998; Edit unit</div>
+  <div class="ctx-divider"></div>
+  <div class="ctx-item danger" onclick="ctxRemove()" role="menuitem">&#x2715; Remove from yard</div>
+</div>
+
+<!-- Add/Edit modal -->
+<div class="modal-overlay" id="add-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-title">Add unit to yard</span>
+      <button class="modal-close" onclick="closeAddModal()">&#x2715;</button>
+    </div>
+    <div class="modal-body">
+      <div class="field full">
+        <label>VIN / Unit identifier</label>
+        <div class="vin-row">
+          <input type="text" id="f-vin" placeholder="e.g. TRK-1101 or scan VIN">
+          <button class="btn-scan" id="scan-btn" onclick="simulateVinScan()">&#128247; AI Scan</button>
+        </div>
+        <div class="vin-hint" id="vin-hint">Tap "AI Scan" to simulate C-3PO OCR handshake</div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>Vehicle type</label>
+          <select id="f-type">
+            <option value="&#x1F69A; Day Cab Tractor">&#x1F69A; Day Cab Tractor</option>
+            <option value="&#x1F69A; Sleeper Cab">&#x1F69A; Sleeper Cab</option>
+            <option value="&#x1F69C; Dry Van Trailer">&#x1F69C; Dry Van Trailer</option>
+            <option value="&#x1F6FB; Flatbed Trailer">&#x1F6FB; Flatbed Trailer</option>
+            <option value="&#x1F504; Reefer Trailer">&#x1F504; Reefer Trailer</option>
+            <option value="&#x1F6E2; Tanker">&#x1F6E2; Tanker</option>
+            <option value="&#x1F69C; Ag / Farm Equip">&#x1F69C; Ag / Farm Equip</option>
+            <option value="&#x1F3D7; Construction Equip">&#x1F3D7; Construction Equip</option>
+            <option value="&#x1F691; Emergency / EMS">&#x1F691; Emergency / EMS</option>
+            <option value="&#x1F692; Fire Apparatus">&#x1F692; Fire Apparatus</option>
+            <option value="&#x26F5; Marine">&#x26F5; Marine</option>
+            <option value="&#x1FA96; Gov / Military">&#x1FA96; Gov / Military</option>
+            <option value="&#x1F68C; Transit / Bus">&#x1F68C; Transit / Bus</option>
+            <option value="&#x1F69B; Forklift">&#x1F69B; Forklift</option>
+          </select>
+        </div>
+        <div class="field"><label>Lane</label>
+          <select id="f-lane">
+            <option value="enroute">En Route</option>
+            <option value="inbound">Inbound</option>
+            <option value="inprogress">In Progress</option>
+            <option value="outbound">Outbound</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>Customer</label><input type="text" id="f-customer" placeholder="e.g. Lone Star Freight"></div>
+        <div class="field"><label>Assigned tech</label><input type="text" id="f-tech" placeholder="e.g. Ryan A."></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>Service order #</label><input type="text" id="f-so" placeholder="e.g. SO-29900"></div>
+        <div class="field"><label>Own fleet?</label>
+          <select id="f-own"><option value="no">No -- customer unit</option><option value="yes">Yes -- own fleet</option></select>
+        </div>
+      </div>
+      <div class="field full"><label>Notes</label><input type="text" id="f-notes" placeholder="Tech notes, issue description..."></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-modal cancel" onclick="closeAddModal()">Cancel</button>
+      <button class="btn-modal confirm" onclick="submitUnit()" id="modal-submit-btn">Add to yard</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm remove -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal" style="width:360px">
+    <div class="modal-header"><span class="modal-title">Remove from yard?</span><button class="modal-close" onclick="closeConfirmModal()">&#x2715;</button></div>
+    <div class="confirm-body" id="confirm-body">Remove this unit?</div>
+    <div class="modal-footer">
+      <button class="btn-modal cancel" onclick="closeConfirmModal()">Cancel</button>
+      <button class="btn-modal danger-confirm" onclick="confirmRemove()">Remove from yard</button>
+    </div>
+  </div>
+</div>
+
+<!-- Handshake modal -->
+<div class="modal-overlay" id="handshake-modal">
+  <div class="modal" style="border-color:rgba(96,165,250,0.35)">
+    <div class="modal-header" style="border-color:rgba(96,165,250,0.2)">
+      <span class="modal-title" style="color:var(--fullbay)">Switzerland Handshake -- Autonomous Arrival</span>
+      <button class="modal-close" onclick="closeHandshakeModal()">&#x2715;</button>
+    </div>
+    <div class="handshake-anim">
+      <div class="handshake-icon">&#x1F50C;</div>
+      <div class="handshake-title" id="hs-title">Geofence Acquired</div>
+      <div class="handshake-sub" id="hs-sub">Unit approaching. C-3PO initiating handshake protocol.</div>
+    </div>
+    <div class="agent-fire-list" id="agent-fire-list">
+      <div class="agent-fire-item" id="af-c3po">
+        <div class="agent-fire-dot" style="background:#60A5FA"></div>
+        <span class="agent-fire-name" style="color:#60A5FA">C-3PO</span>
+        <span class="agent-fire-action">Transmitting unit identity packet + fault data</span>
+        <span class="agent-fire-status" style="color:#60A5FA">&#10003; Done</span>
+      </div>
+      <div class="agent-fire-item" id="af-lobot">
+        <div class="agent-fire-dot" style="background:#F472B6"></div>
+        <span class="agent-fire-name" style="color:#F472B6">Lobot</span>
+        <span class="agent-fire-action">Payment method validated -- ACH pre-auth begun</span>
+        <span class="agent-fire-status" style="color:#F472B6">&#10003; Running</span>
+      </div>
+      <div class="agent-fire-item" id="af-ig11">
+        <div class="agent-fire-dot" style="background:var(--agent-ig11)"></div>
+        <span class="agent-fire-name" style="color:var(--agent-ig11)">IG-11</span>
+        <span class="agent-fire-action">Physical lock sequence triggered -- awaiting tech</span>
+        <span class="agent-fire-status" style="color:var(--agent-ig11)">&#128274; Locking</span>
+      </div>
+      <div class="agent-fire-item" id="af-bb8">
+        <div class="agent-fire-dot" style="background:#FBBF24"></div>
+        <span class="agent-fire-name" style="color:#FBBF24">BB-8</span>
+        <span class="agent-fire-action">Parts cross-check against fault data complete</span>
+        <span class="agent-fire-status" style="color:#FBBF24">&#10003; Ordered</span>
+      </div>
+      <div class="agent-fire-item" id="af-k3po">
+        <div class="agent-fire-dot" style="background:#E2E8F0"></div>
+        <span class="agent-fire-name" style="color:#E2E8F0">K-3PO</span>
+        <span class="agent-fire-action">Bay assignment confirmed -- no scheduling conflict</span>
+        <span class="agent-fire-status" style="color:#E2E8F0">&#10003; Bay 3</span>
+      </div>
+      <div class="agent-fire-item" id="af-chopper">
+        <div class="agent-fire-dot" style="background:#FB923C"></div>
+        <span class="agent-fire-name" style="color:#FB923C">Chopper</span>
+        <span class="agent-fire-action">Fleet manager view updated -- Seattle notified</span>
+        <span class="agent-fire-status" style="color:#FB923C">&#10003; Sent</span>
+      </div>
+    </div>
+    <div class="modal-footer" style="border-color:rgba(96,165,250,0.2)">
+      <button class="btn-modal cancel" onclick="closeHandshakeModal()">Close</button>
+      <button class="btn-modal confirm" id="hs-confirm-btn" disabled style="opacity:0.4">Agents firing...</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+<script>
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const now = Date.now();
+const H = 3600000;
+function ha(n){ return new Date(now - n*H); }
+function dwellBand(h){ return h<1?0:h<4?1:h<8?2:h<16?3:h<24?4:h<48?5:6; }
+function fmtDwell(h){
+  if(h<1) return Math.round(h*60)+'m';
+  if(h<24) return Math.round(h)+'h';
+  return Math.floor(h/24)+'d '+(Math.round(h%24))+'h';
+}
+function fmtDate(d){
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+'\n'+
+         d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+}
+function typeIcon(t){ return t ? t.split(' ')[0] : '\u{1F69A}'; }
+function typeName(t){ return t ? t.split(' ').slice(1).join(' ') : 'Unknown'; }
+function uid(){ return 'u'+Date.now()+Math.floor(Math.random()*1000); }
+function fmtMiles(m){ return m < 1 ? Math.round(m*5280)+'ft' : m.toFixed(1)+'mi'; }
+function fmtETA(mins){
+  if(mins < 1) return 'arriving';
+  if(mins < 60) return Math.round(mins)+'min';
+  return Math.floor(mins/60)+'h '+Math.round(mins%60)+'m';
+}
+
+// ── Agent definitions ─────────────────────────────────────────────────────────
+const AGENTS = {
+  c3po:   {name:'C-3PO',  color:'#60A5FA', role:'Protocol'},
+  r2d2:   {name:'R2-D2',  color:'#38C4F0', role:'Routing'},
+  bb8:    {name:'BB-8',   color:'#FBBF24', role:'Parts'},
+  l337:   {name:'L3-37',  color:'#34D399', role:'Monitoring'},
+  k2so:   {name:'K-2SO',  color:'#94A3B8', role:'Verification'},
+  lobot:  {name:'Lobot',  color:'#F472B6', role:'Payment'},
+  ig11:   {name:'IG-11',  color:'#EF4444', role:'Enforcement'},
+  chopper:{name:'Chopper',color:'#FB923C', role:'Fleet Disposition'},
+  k3po:   {name:'K-3PO',  color:'#E2E8F0', role:'Bay Scheduling'},
+  mc80a:  {name:'MC80A',  color:'#A78BFA', role:'Orchestrator'},
+};
+
+// ── En route units ────────────────────────────────────────────────────────────
+// distanceMi: current distance from shop, speedMph: approach speed
+let enRouteUnits = [
+  {
+    id:uid(), unit:'TRK-7701', customer:'Rio Grande Carriers', type:'\u{1F69A} Sleeper Cab',
+    lane:'enroute', own:false, dwellHrs:0, soNumber:'SO-29950', tech:'--',
+    locked:false, bookHrs:null, actualHrs:null,
+    distanceMi:4.2, speedMph:35,
+    lastAgent:'r2d2', lastAgentAction:'R2-D2 routing via I-10 -- ETA 7min',
+    fault:'DTC P0087 -- Fuel rail pressure low',
+    notes:'Autonomous arrival en route. R2-D2 navigating. Lobot pre-auth started. BB-8 staged fuel system parts.',
+    history:[
+      {date:ha(0.25),type:'R2-D2 -- Route Calculated',tech:'Automated'},
+      {date:ha(0.22),type:'Lobot -- Payment Pre-Auth Started',tech:'Automated'},
+      {date:ha(0.20),type:'BB-8 -- Parts Staged: Fuel Rail Kit',tech:'Automated'},
+      {date:ha(0.18),type:'K-3PO -- Bay 2 Reserved',tech:'Automated'},
+      {date:ha(0.15),type:'Chopper -- Fleet Manager Notified',tech:'Automated'},
+    ]
+  },
+  {
+    id:uid(), unit:'TANK-904', customer:'Gulf Coast Chemical', type:'\u{1F6E2} Tanker',
+    lane:'enroute', own:false, dwellHrs:0, soNumber:'SO-29951', tech:'--',
+    locked:false, bookHrs:null, actualHrs:null,
+    distanceMi:1.8, speedMph:25,
+    lastAgent:'k3po', lastAgentAction:'K-3PO -- Bay 4 cleared -- no conflict',
+    fault:'DTC U0100 -- Lost comm with ECM',
+    notes:'4 min out. K-3PO confirmed bay availability. DOT tanker -- Jacob R. certified.',
+    history:[
+      {date:ha(0.15),type:'R2-D2 -- Route Calculated',tech:'Automated'},
+      {date:ha(0.12),type:'Lobot -- ACH Verification Running',tech:'Automated'},
+      {date:ha(0.10),type:'K-3PO -- Bay 4 Confirmed',tech:'Automated'},
+    ]
+  },
+  {
+    id:uid(), unit:'TRK-5503', customer:'Panhandle Logistics', type:'\u{1F69A} Day Cab Tractor',
+    lane:'enroute', own:false, dwellHrs:0, soNumber:'SO-29952', tech:'--',
+    locked:false, bookHrs:null, actualHrs:null,
+    distanceMi:8.6, speedMph:45,
+    lastAgent:'r2d2', lastAgentAction:'R2-D2 routing -- 11min out',
+    fault:'DTC P0299 -- Turbo underboost',
+    notes:'11 min out. Lobot pre-auth pending ACH. BB-8 checking turbo parts inventory.',
+    history:[
+      {date:ha(0.1),type:'R2-D2 -- Route Calculated',tech:'Automated'},
+      {date:ha(0.08),type:'BB-8 -- Parts Check: Turbo Kit',tech:'Automated'},
+    ]
+  },
+];
+
+// ── Main unit data ────────────────────────────────────────────────────────────
+let units = [
+  // INBOUND
+  {id:uid(),unit:'TRL-4482',customer:'Lone Star Freight',type:'\u{1F69C} Dry Van Trailer',
+    lane:'inbound',own:false,dwellHrs:0.4,soNumber:'SO-29841',tech:'Jacob R.',
+    locked:true,bookHrs:null,actualHrs:null,
+    lastAgent:'c3po',lastAgentAction:'Handshake complete -- unit identity verified',
+    notes:'Just arrived via C-3PO handshake. Brake fade on approach.',
+    history:[{date:ha(0.4),type:'C-3PO Handshake -- Yard Check In',tech:'Automated'}]},
+  {id:uid(),unit:'TRK-1101',customer:'Bayou Carriers',type:'\u{1F69A} Day Cab Tractor',
+    lane:'inbound',own:false,dwellHrs:0.9,soNumber:'SO-29850',tech:'--',
+    locked:true,bookHrs:null,actualHrs:null,
+    lastAgent:'c3po',lastAgentAction:'C-3PO handshake -- turbo fault DTC P0299',
+    notes:'Turbo underboost. C-3PO flagged DTC P0299 on arrival. Awaiting tech.',
+    history:[{date:ha(0.9),type:'C-3PO Handshake -- Yard Check In',tech:'Automated'},{date:ha(0.8),type:'DTC P0299 Logged',tech:'Automated'}]},
+  {id:uid(),unit:'TANK-771',customer:'Coastal Chemical',type:'\u{1F6E2} Tanker',
+    lane:'inbound',own:false,dwellHrs:1.1,soNumber:'SO-29843',tech:'--',
+    locked:true,bookHrs:null,actualHrs:null,
+    lastAgent:'bb8',lastAgentAction:'Parts cross-check complete -- DOT kit staged',
+    notes:'DOT inspection requested. BB-8 staged parts. Awaiting tech assignment.',
+    history:[{date:ha(1.1),type:'Yard Check In',tech:'Sierra M.'},{date:ha(1.0),type:'BB-8 -- Parts Pre-Staged',tech:'Automated'}]},
+  {id:uid(),unit:'AG-0221',customer:'Brazos Valley Farms',type:'\u{1F69C} Ag / Farm Equip',
+    lane:'inbound',own:false,dwellHrs:2.3,soNumber:'SO-29844',tech:'--',
+    locked:true,bookHrs:null,actualHrs:null,
+    lastAgent:'c3po',lastAgentAction:'SO draft created from fault data',
+    notes:'PTO shaft issue. First time customer.',
+    history:[{date:ha(2.3),type:'Yard Check In',tech:'Sierra M.'},{date:ha(2.1),type:'C-3PO -- SO Draft Created',tech:'Automated'}]},
+  // IN PROGRESS
+  {id:uid(),unit:'TRL-2210',customer:'Gulf Transport LLC',type:'\u{1F69C} Dry Van Trailer',
+    lane:'inprogress',own:false,dwellHrs:2.1,soNumber:'SO-29808',tech:'Ryan A.',
+    locked:true,bookHrs:3.0,actualHrs:2.1,
+    lastAgent:'l337',lastAgentAction:'Book 3.0h -- actual 2.1h -- on track',
+    notes:'ABS module replacement in progress. Parts on order ETA 2pm.',
+    history:[{date:ha(2.1),type:'Yard Check In',tech:'Sierra M.'},{date:ha(1.9),type:'SO Created -- ABS Module',tech:'Sierra M.'},{date:ha(1.1),type:'Tech Assigned',tech:'Ryan A.'},{date:ha(0.5),type:'L3-37 -- Monitoring Active',tech:'Automated'}]},
+  {id:uid(),unit:'TRK-0882',customer:'H-Town Haul',type:'\u{1F69A} Sleeper Cab',
+    lane:'inprogress',own:false,dwellHrs:5.5,soNumber:'SO-29822',tech:'Ryan A.',
+    locked:true,bookHrs:6.0,actualHrs:5.5,
+    lastAgent:'l337',lastAgentAction:'Injector replacement -- 5.5h of 6.0h -- on pace',
+    notes:'Injector set replacement, all 6. On pace per L3-37.',
+    history:[{date:ha(5.5),type:'Yard Check In',tech:'Sierra M.'},{date:ha(5.3),type:'SO Created -- Injector Set',tech:'Samantha K.'},{date:ha(4.8),type:'Tech Assigned',tech:'Ryan A.'},{date:ha(4.5),type:'BB-8 -- Injector Set Delivered',tech:'Automated'}]},
+  {id:uid(),unit:'EMS-044',customer:'Houston Fire Dept',type:'\u{1F692} Fire Apparatus',
+    lane:'inprogress',own:false,dwellHrs:8.1,soNumber:'SO-29760',tech:'Jacob R.',
+    locked:true,bookHrs:10.0,actualHrs:8.1,priority:true,
+    lastAgent:'l337',lastAgentAction:'EVT compliance window -- 8.1h of 10.0h book',
+    notes:'EVT-certified inspection + aerial hydraulics. Compliance deadline Friday.',
+    history:[{date:ha(8.1),type:'Yard Check In',tech:'Sierra M.'},{date:ha(8.0),type:'SO Created -- EVT Inspection',tech:'Samantha K.'},{date:ha(7.5),type:'Compliance Flag',tech:'Ashley S.'},{date:ha(6.0),type:'Tech Assigned (EVT cert req.)',tech:'Jacob R.'}]},
+  {id:uid(),unit:'TRK-3340',customer:'Texas Star Lines',type:'\u{1F69A} Day Cab Tractor',
+    lane:'inprogress',own:false,dwellHrs:9.2,soNumber:'SO-29801',tech:'Jacob R.',
+    locked:true,bookHrs:8.0,actualHrs:9.2,
+    lastAgent:'l337',lastAgentAction:'Overrun -- clutch job running long -- fleet notified',
+    notes:'Clutch replacement. Flywheel resurfacing added mid-job. L3-37 flagged overrun.',
+    history:[{date:ha(9.2),type:'Yard Check In',tech:'Sierra M.'},{date:ha(8.5),type:'Tech Assigned',tech:'Jacob R.'},{date:ha(8.1),type:'L3-37 -- Overrun Flagged',tech:'Automated'},{date:ha(7.0),type:'Flywheel Resurfacing Added',tech:'Jacob R.'}]},
+  {id:uid(),unit:'MIL-009',customer:'Texas Army Natl Guard',type:'\u{1FA96} Gov / Military',
+    lane:'inprogress',own:false,dwellHrs:14.2,soNumber:'SO-29800',tech:'Ryan A.',
+    locked:true,bookHrs:16.0,actualHrs:14.2,
+    lastAgent:'lobot',lastAgentAction:'GSA payment pre-auth verified -- funds confirmed',
+    notes:'LMTV brake and suspension. GSA contract. Lobot confirmed funds at arrival.',
+    history:[{date:ha(14.2),type:'Yard Check In',tech:'Sierra M.'},{date:ha(12.0),type:'Tech Assigned',tech:'Ryan A.'},{date:ha(10.0),type:'Lobot -- GSA Pre-Auth Confirmed',tech:'Automated'}]},
+  // OUTBOUND
+  {id:uid(),unit:'TRK-5512',customer:'Panhandle Trucking',type:'\u{1F69A} Sleeper Cab',
+    lane:'outbound',own:false,dwellHrs:6.4,soNumber:'SO-29788',tech:'Ryan A.',
+    locked:false,bookHrs:5.0,actualHrs:4.9,
+    lastAgent:'k2so',lastAgentAction:'K-2SO verified -- came in under book by 0.1h',
+    notes:'Fifth wheel + kingpin done. Under book. K-2SO released.',
+    history:[{date:ha(6.4),type:'Yard Check In',tech:'Sierra M.'},{date:ha(5.5),type:'Tech Assigned',tech:'Ryan A.'},{date:ha(1.4),type:'Work Completed',tech:'Ryan A.'},{date:ha(1.0),type:'K-2SO -- Verification Passed',tech:'Automated'},{date:ha(0.9),type:'Lobot -- Invoice Sent',tech:'Automated'},{date:ha(0.9),type:'IG-11 -- Lock Released',tech:'Automated'}]},
+  {id:uid(),unit:'TRL-5511',customer:'Texas Star Lines',type:'\u{1F69C} Dry Van Trailer',
+    lane:'outbound',own:false,dwellHrs:7.9,soNumber:'SO-29742',tech:'Jacob R.',
+    locked:false,bookHrs:6.0,actualHrs:5.8,
+    lastAgent:'k2so',lastAgentAction:'K-2SO verification passed -- release authorized',
+    notes:'Door hinge + seal inspection complete. K-2SO verified.',
+    history:[{date:ha(7.9),type:'Yard Check In',tech:'Sierra M.'},{date:ha(6.5),type:'Tech Assigned',tech:'Jacob R.'},{date:ha(2.1),type:'Work Completed',tech:'Jacob R.'},{date:ha(1.0),type:'K-2SO -- Verification Passed',tech:'Automated'},{date:ha(0.9),type:'IG-11 -- Lock Released',tech:'Automated'}]},
+  {id:uid(),unit:'TRL-9902',customer:'Beaumont Bulk',type:'\u{1F6E2} Tanker',
+    lane:'outbound',own:false,dwellHrs:14.5,soNumber:'SO-29694',tech:'Jacob R.',
+    locked:true,bookHrs:8.0,actualHrs:11.4,priority:true,
+    lastAgent:'lobot',lastAgentAction:'ACH pre-auth complete -- awaiting K-2SO release',
+    notes:'Bulkhead weld done. Lobot ready -- K-2SO verification pending.',
+    history:[{date:ha(14.5),type:'Yard Check In',tech:'Sierra M.'},{date:ha(11.4),type:'Work Completed',tech:'Jacob R.'},{date:ha(4.0),type:'Lobot -- ACH Pre-Auth Complete',tech:'Automated'},{date:ha(1.0),type:'K-2SO -- Verification Pending',tech:'Automated'}]},
+  {id:uid(),unit:'TRL-7740',customer:'Galveston Freight',type:'\u{1F69C} Dry Van Trailer',
+    lane:'outbound',own:false,dwellHrs:29.5,soNumber:'SO-29612',tech:'Ryan A.',
+    locked:true,bookHrs:6.0,actualHrs:6.1,priority:true,
+    lastAgent:'lobot',lastAgentAction:'Insurance dispute -- payment hold -- IG-11 holding',
+    notes:'Axle seal done. Insurance hold. IG-11 holding lock until payment clears.',
+    history:[{date:ha(29.5),type:'Yard Check In',tech:'Sierra M.'},{date:ha(24.0),type:'Work Completed',tech:'Ryan A.'},{date:ha(15.0),type:'Customer Dispute -- Insurance Hold',tech:'Ashley S.'},{date:ha(6.0),type:'Lobot -- Payment Hold Active',tech:'Automated'},{date:ha(6.0),type:'IG-11 -- Lock Maintained',tech:'Automated'}]},
+  {id:uid(),unit:'TRL-8820',customer:'Panhandle Trucking',type:'\u{1F69C} Dry Van Trailer',
+    lane:'outbound',own:false,dwellHrs:54.2,soNumber:'SO-29540',tech:'Ryan A.',
+    locked:false,bookHrs:40.0,actualHrs:52.1,priority:true,
+    lastAgent:'chopper',lastAgentAction:'Fleet manager notified -- awaiting pickup',
+    notes:'Frame crack + alignment done. K-2SO verified. Awaiting fleet pickup.',
+    history:[{date:ha(54.2),type:'Yard Check In',tech:'Sierra M.'},{date:ha(50.0),type:'Frame Crack Confirmed',tech:'Ryan A.'},{date:ha(10.0),type:'Welder On-Site',tech:'Ryan A.'},{date:ha(2.0),type:'K-2SO -- Verification Passed',tech:'Automated'},{date:ha(1.9),type:'Lobot -- Invoice Delivered',tech:'Automated'},{date:ha(1.9),type:'IG-11 -- Lock Released',tech:'Automated'},{date:ha(1.8),type:'Chopper -- Fleet Notified',tech:'Automated'}]},
+  // OWN FLEET
+  {id:uid(),unit:'IFS-01',customer:'Integrity Fleet Services',type:'\u{1F69A} Day Cab Tractor',
+    lane:'inbound',own:true,dwellHrs:0.8,soNumber:'--',tech:'--',
+    locked:false,bookHrs:null,actualHrs:null,
+    lastAgent:'chopper',lastAgentAction:'Own fleet -- PM scheduled',
+    notes:'Shop truck -- routine PM scheduled.',
+    history:[{date:ha(0.8),type:'Entered Yard',tech:'Ryan A.'}]},
+  {id:uid(),unit:'IFS-02',customer:'Integrity Fleet Services',type:'\u{1F69B} Forklift',
+    lane:'inprogress',own:true,dwellHrs:5.2,soNumber:'--',tech:'Jacob R.',
+    locked:false,bookHrs:4.0,actualHrs:5.2,
+    lastAgent:'l337',lastAgentAction:'Own fleet -- overrun 5.2h vs 4.0h',
+    notes:'Hydraulic fluid leak on mast.',
+    history:[{date:ha(5.2),type:'Entered Yard',tech:'Ryan A.'},{date:ha(5.0),type:'Diagnostic -- Mast Hydraulic Leak',tech:'Jacob R.'}]},
+  {id:uid(),unit:'IFS-03',customer:'Integrity Fleet Services',type:'\u{1F69A} Sleeper Cab',
+    lane:'outbound',own:true,dwellHrs:18.4,soNumber:'--',tech:'Ryan A.',
+    locked:false,bookHrs:4.0,actualHrs:3.8,
+    lastAgent:'k2so',lastAgentAction:'Verification passed -- ready for route',
+    notes:'Tires replaced. K-2SO verified. Ready for route.',
+    history:[{date:ha(18.4),type:'Entered Yard',tech:'Sierra M.'},{date:ha(10.0),type:'Work Complete',tech:'Ryan A.'},{date:ha(9.9),type:'K-2SO -- Verification Passed',tech:'Automated'}]},
+];
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let showOwnFleet = false;
+let listViewActive = false;
+let activeTruck = null;
+let ctxTarget = null;
+let editingId = null;
+let removeTargetId = null;
+let pendingArrival = null;
+let darkMode = true;
+let colorblind = false;
+let grayscale = false;
+let fontScale = 0;
+const fontScales = [1, 1.14, 1.28];
+let expandedListRow = null;
+let enRouteInterval = null;
+
+// ── En route distance ticker ──────────────────────────────────────────────────
+function startEnRouteTimer(){
+  if(enRouteInterval) clearInterval(enRouteInterval);
+  enRouteInterval = setInterval(()=>{
+    try{
+    let changed = false;
+    enRouteUnits.forEach(u => {
+      if(u.distanceMi > 0){
+        const decrement = (u.speedMph / 3600) * 5; // 5 second tick
+        u.distanceMi = Math.max(0, u.distanceMi - decrement);
+        changed = true;
+        // When close enough, trigger handshake
+        if(u.distanceMi < 0.15 && !u._arriving){
+          u._arriving = true;
+          triggerAutoHandshake(u);
+        }
+      }
+    });
+    if(changed) renderEnRoute();
+    updateMC80A();
+    }catch(e){/* DOM not ready */}
+  }, 5000);
+}
+
+function triggerAutoHandshake(enRouteUnit){
+  // Move from en route to inbound
+  setTimeout(()=>{
+    enRouteUnits = enRouteUnits.filter(x=>x.id !== enRouteUnit.id);
+    const newUnit = Object.assign({}, enRouteUnit, {
+      lane:'inbound', locked:true, dwellHrs:0.01,
+      lastAgent:'c3po', lastAgentAction:'C-3PO handshake complete -- geofence acquired',
+      history:[
+        {date:new Date(),type:'C-3PO -- Handshake Complete',tech:'Automated'},
+        {date:new Date(),type:'Lobot -- Payment Pre-Auth Active',tech:'Automated'},
+        {date:new Date(),type:'IG-11 -- Physical Lock Active',tech:'Automated'},
+        ...enRouteUnit.history
+      ]
+    });
+    delete newUnit._arriving;
+    units.unshift(newUnit);
+    render();
+    setTimeout(()=>{
+      const el = document.querySelector('[data-id="'+newUnit.id+'"]');
+      if(el){ el.classList.add('arriving'); setTimeout(()=>el.classList.remove('arriving'),600); }
+    },50);
+    showToast('\u{1F50C} '+enRouteUnit.unit+' crossed geofence -- C-3PO handshake fired');
+  }, 800);
+}
+
+function etaMinutes(u){
+  if(!u.distanceMi || !u.speedMph) return 0;
+  return (u.distanceMi / u.speedMph) * 60;
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function visibleUnits(){ return units.filter(u => showOwnFleet || !u.own); }
+
+function renderEnRoute(){
+  const row = document.getElementById('row-enroute');
+  const cnt = document.getElementById('count-enroute');
+  if(!row || !cnt) return;
+  cnt.textContent = enRouteUnits.length + ' unit' + (enRouteUnits.length!==1?'s':'');
+  row.innerHTML = '';
+  enRouteUnits.forEach(u => row.appendChild(makeEnRouteTruck(u)));
+}
+
+function render(){
+  renderEnRoute();
+  const visible = visibleUnits();
+  ['inbound','inprogress','outbound'].forEach(l => {
+    const row = document.getElementById('row-'+l);
+    const lu = visible.filter(u => u.lane === l);
+    const cnt = document.getElementById('count-'+l);
+    if(cnt) cnt.textContent = lu.length + ' unit' + (lu.length!==1?'s':'');
+    if(row){ row.innerHTML = ''; lu.forEach(u => row.appendChild(makeTruck(u))); }
+  });
+  renderList();
+  renderStats();
+  updateMC80A();
+}
+
+function makeEnRouteTruck(u){
+  const eta = etaMinutes(u);
+  const el = document.createElement('div');
+  el.className = 'truck enroute-unit';
+  el.dataset.id = u.id;
+  el.setAttribute('tabindex','0');
+  el.innerHTML = `
+    <div class="truck-icon">${typeIcon(u.type)}</div>
+    <div class="truck-unit">${u.unit}</div>
+    <div class="truck-eta">${fmtMiles(u.distanceMi)} out</div>
+    <div class="truck-eta">${fmtETA(eta)}</div>
+    <div class="truck-agent" style="color:var(--agent-k3po)">K-3PO</div>
+  `;
+  el.addEventListener('click', e => { e.stopPropagation(); closeCtx(); showEnRouteTip(u, el); });
+  el.addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' '){ e.preventDefault(); showEnRouteTip(u,el); }});
+  return el;
+}
+
+function makeTruck(u){
+  const el = document.createElement('div');
+  const band = dwellBand(u.dwellHrs);
+  el.className = 'truck '+(u.own?'own':'cust')+' d'+band;
+  if(u.priority && u.lane==='outbound' && u.dwellHrs>=24) el.classList.add('alert');
+  el.dataset.id = u.id;
+  el.setAttribute('tabindex','0');
+  el.setAttribute('aria-label', u.unit+' '+u.customer+' '+fmtDwell(u.dwellHrs));
+  const agent = AGENTS[u.lastAgent]||null;
+  const bookLine = (u.bookHrs && u.lane==='inprogress')
+    ? `<div class="truck-book" style="color:${u.actualHrs>u.bookHrs?'var(--state-overrun)':'var(--state-ontrack)'}">${fmtDwell(u.actualHrs)}/${fmtDwell(u.bookHrs)}</div>`
+    : '';
+  const agentLine = agent ? `<div class="truck-agent" style="color:${agent.color}">${agent.name}</div>` : '';
+  const lockBadge = `<div class="lock-badge ${u.locked?'locked':'released'}" title="${u.locked?'IG-11 locked':'IG-11 released'}">${u.locked?'\u{1F512}':'\u{1F513}'}</div>`;
+  el.innerHTML = `
+    <div class="truck-icon">${typeIcon(u.type)}</div>
+    <div class="truck-unit">${u.unit}</div>
+    <div class="truck-dwell">${fmtDwell(u.dwellHrs)}</div>
+    ${agentLine}${bookLine}
+    ${u.priority?'<div class="priority-badge">!</div>':''}
+    ${lockBadge}
+  `;
+  el.addEventListener('click', e => { e.stopPropagation(); closeCtx(); showTooltip(u, el); });
+  el.addEventListener('contextmenu', e => { e.preventDefault(); closeTooltip(); openCtx(u, e); });
+  el.addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' '){ e.preventDefault(); showTooltip(u,el); }});
+  return el;
+}
+
+// ── MC80A orchestrator ────────────────────────────────────────────────────────
+function updateMC80A(){
+  const conflicts = [];
+  const overdue = units.filter(u=>u.lane==='outbound'&&u.dwellHrs>=48&&u.locked).length;
+  const overrun = units.filter(u=>u.lane==='inprogress'&&u.bookHrs&&u.actualHrs>u.bookHrs*1.3).length;
+  const enRouteCount = enRouteUnits.length;
+  if(overdue>0) conflicts.push(overdue+' locked 48h+');
+  if(overrun>0) conflicts.push(overrun+' L3-37 overrun');
+  if(enRouteCount>1) conflicts.push(enRouteCount+' en route -- K-3PO sequencing');
+  const stateEl = document.getElementById('mc80a-state');
+  const dotEl = document.getElementById('mc80a-dot');
+  if(!stateEl || !dotEl) return;
+  if(conflicts.length===0){
+    stateEl.textContent = 'All systems nominal';
+    stateEl.className = 'mc80a-state';
+    dotEl.style.background = 'var(--agent-mc80a)';
+    dotEl.style.boxShadow = '0 0 6px var(--agent-mc80a)';
+  } else {
+    stateEl.textContent = conflicts.join(' · ');
+    stateEl.className = 'mc80a-state mc80a-conflict';
+    dotEl.style.background = '#F59E0B';
+    dotEl.style.boxShadow = '0 0 8px #F59E0B';
+  }
+}
+
+// ── Tooltip ───────────────────────────────────────────────────────────────────
+const bcs=[{bg:'#0C1E28',c:'#38C4F0'},{bg:'#0A1C12',c:'#4DB87A'},{bg:'#181E06',c:'#9AB830'},{bg:'#281C04',c:'#E8A020'},{bg:'#2C1006',c:'#F06820'},{bg:'#280606',c:'#E03030'},{bg:'#1C0404',c:'#A01010'}];
+const ocs=[{bg:'#0C1030',c:'#7C9EF0'},{bg:'#0E1228',c:'#8898E8'},{bg:'#160A26',c:'#A060D8'},{bg:'#1E0828',c:'#C050D0'},{bg:'#240820',c:'#D03AAA'},{bg:'#220610',c:'#D02880'},{bg:'#1C0408',c:'#A01850'}];
+
+function showEnRouteTip(u, anchorEl){
+  activeTruck = u;
+  const tip = document.getElementById('tooltip');
+  const eta = etaMinutes(u);
+  document.getElementById('tip-unit').textContent = u.unit;
+  document.getElementById('tip-meta').textContent = u.customer+' \u00b7 '+typeIcon(u.type)+' '+typeName(u.type);
+  const badge = document.getElementById('tip-dwell-badge');
+  badge.textContent = fmtMiles(u.distanceMi)+' \u00b7 '+fmtETA(eta);
+  badge.style.cssText = 'background:rgba(184,200,216,0.1);color:#B8C8D8;border-color:rgba(184,200,216,0.3)';
+  const agent = AGENTS[u.lastAgent];
+  if(agent){
+    document.getElementById('tip-agent-dot').style.background=agent.color;
+    document.getElementById('tip-agent-name').textContent=agent.name;
+    document.getElementById('tip-agent-name').style.color=agent.color;
+    document.getElementById('tip-agent-action').textContent=u.lastAgentAction||'--';
+    document.getElementById('tip-agent-row').style.display='';
+  }
+  document.getElementById('tip-lock-row').style.display='none';
+  document.getElementById('tip-book-row').style.display='none';
+  const etaRow = document.getElementById('tip-eta-row');
+  etaRow.style.display='';
+  document.getElementById('tip-eta-text').textContent =
+    fmtMiles(u.distanceMi)+' out \u00b7 ETA '+fmtETA(eta)+' \u00b7 K-3PO: Bay reserved \u00b7 Lobot: Pre-auth active \u00b7 BB-8: Parts staged';
+  document.getElementById('tip-so-text').textContent='Open service order '+(u.soNumber||'--');
+  const hist = document.getElementById('tip-history');
+  hist.innerHTML = u.history.slice().reverse().map(h=>
+    `<div class="history-item"><div class="history-date">${fmtDate(h.date)}</div><div><div class="history-type">${h.type}</div><div class="history-tech">${h.tech}</div></div></div>`
+  ).join('');
+  const nw = document.getElementById('tip-notes-wrap');
+  if(u.notes){ document.getElementById('tip-notes').textContent=u.notes; nw.style.display=''; }
+  else nw.style.display='none';
+  positionTip(anchorEl);
+  tip.classList.add('visible');
+}
+
+function showTooltip(u, anchorEl){
+  activeTruck = u;
+  const tip = document.getElementById('tooltip');
+  document.getElementById('tip-unit').textContent = u.unit;
+  document.getElementById('tip-meta').textContent = u.customer+' \u00b7 '+typeIcon(u.type)+' '+typeName(u.type)+(u.tech&&u.tech!='--'?' \u00b7 '+u.tech:'');
+  const band = dwellBand(u.dwellHrs);
+  const bc = u.own ? ocs[band] : bcs[band];
+  const badge = document.getElementById('tip-dwell-badge');
+  badge.textContent = fmtDwell(u.dwellHrs)+' in yard';
+  badge.style.cssText = 'background:'+bc.bg+';color:'+bc.c+';border-color:'+bc.c+'44';
+  const agent = AGENTS[u.lastAgent];
+  if(agent){
+    document.getElementById('tip-agent-dot').style.background=agent.color;
+    document.getElementById('tip-agent-name').textContent=agent.name;
+    document.getElementById('tip-agent-name').style.color=agent.color;
+    document.getElementById('tip-agent-action').textContent=u.lastAgentAction||'--';
+    document.getElementById('tip-agent-row').style.display='';
+  } else { document.getElementById('tip-agent-row').style.display='none'; }
+  // Lock row
+  const lockRow = document.getElementById('tip-lock-row');
+  lockRow.style.display='';
+  document.getElementById('tip-lock-icon').textContent = u.locked?'\u{1F512}':'\u{1F513}';
+  const lt = document.getElementById('tip-lock-text');
+  const ll = document.getElementById('tip-lock-label');
+  if(u.locked){ lt.textContent='IG-11 locked'; lt.className='tip-lock-text locked'; ll.textContent='awaiting K-2SO + Lobot dual auth'; }
+  else { lt.textContent='IG-11 released'; lt.className='tip-lock-text released'; ll.textContent='dual auth confirmed'; }
+  // Book row
+  const bookRow = document.getElementById('tip-book-row');
+  if(u.bookHrs && u.actualHrs !== null){
+    const over = u.actualHrs > u.bookHrs;
+    document.getElementById('tip-book-fill').style.width=Math.min(100,(u.actualHrs/u.bookHrs)*100)+'%';
+    document.getElementById('tip-book-fill').style.background=over?'var(--state-overrun)':'var(--state-ontrack)';
+    document.getElementById('tip-book-vals').textContent=fmtDwell(u.actualHrs)+' / '+fmtDwell(u.bookHrs)+' booked';
+    bookRow.style.display='';
+  } else { bookRow.style.display='none'; }
+  document.getElementById('tip-eta-row').style.display='none';
+  document.getElementById('tip-so-text').textContent='Open service order '+(u.soNumber||'--');
+  const hist = document.getElementById('tip-history');
+  hist.innerHTML = u.history.slice().reverse().map(h=>
+    `<div class="history-item"><div class="history-date">${fmtDate(h.date)}</div><div><div class="history-type">${h.type}</div><div class="history-tech">${h.tech}</div></div></div>`
+  ).join('');
+  const nw = document.getElementById('tip-notes-wrap');
+  if(u.notes){ document.getElementById('tip-notes').textContent=u.notes; nw.style.display=''; }
+  else nw.style.display='none';
+  positionTip(anchorEl);
+  tip.classList.add('visible');
+}
+
+function positionTip(anchorEl){
+  const tip = document.getElementById('tooltip');
+  const r = anchorEl.getBoundingClientRect ? anchorEl.getBoundingClientRect() : {right:400,top:200,left:400};
+  let left=r.right+10, top=r.top-20;
+  if(left+328>window.innerWidth-10) left=r.left-338;
+  if(top+500>window.innerHeight-50) top=window.innerHeight-510;
+  if(top<60) top=60; if(left<8) left=8;
+  tip.style.left=left+'px'; tip.style.top=top+'px';
+}
+function closeTooltip(){ const t=document.getElementById('tooltip'); if(t) t.classList.remove('visible'); activeTruck=null; }
+function fakeSoClick(){ showToast('Opens SO '+(activeTruck?activeTruck.soNumber:'--')+' in Fullbay -- wired to backend in production'); }
+
+// ── List view ─────────────────────────────────────────────────────────────────
+function renderList(){
+  const tbody = document.getElementById('list-body');
+  if(!tbody) return;
+  // Combine en route + regular units for list view
+  const enRouteRows = enRouteUnits.map(u=>({...u,_enroute:true}));
+  const visible = [...enRouteRows, ...visibleUnits()].sort((a,b)=>{
+    const order = {enroute:0,inbound:1,inprogress:2,outbound:3};
+    return (order[a.lane]||0)-(order[b.lane]||0) || b.dwellHrs-a.dwellHrs;
+  });
+  const lc={enroute:'lt-enroute',inbound:'lt-inbound',inprogress:'lt-inprogress',outbound:'lt-outbound'};
+  const ll={enroute:'En Route',inbound:'Inbound',inprogress:'In Progress',outbound:'Outbound'};
+  let html = '';
+  visible.forEach(u=>{
+    const band = dwellBand(u.dwellHrs);
+    const bc = u.own ? ocs[band] : (u._enroute ? {bg:'rgba(184,200,216,0.07)',c:'#B8C8D8'} : bcs[band]);
+    const agent = AGENTS[u.lastAgent];
+    const lockHtml = u._enroute ? '<span style="color:var(--agent-k3po);font-size:11px;font-family:var(--font-data)">En route</span>'
+      : `<span class="list-lock ${u.locked?'locked':'released'}">${u.locked?'\u{1F512} Locked':'\u{1F513} Free'}</span>`;
+    const dwellCell = u._enroute
+      ? `<span style="font-family:var(--font-data);font-size:11px;color:#B8C8D8">${fmtMiles(u.distanceMi)} \u00b7 ${fmtETA(etaMinutes(u))}</span>`
+      : `<span class="list-dwell-pill" style="background:${bc.bg};color:${bc.c};border-color:${bc.c}44">${fmtDwell(u.dwellHrs)}</span>`;
+    html += `<tr data-id="${u.id}" data-enroute="${u._enroute?'1':''}" onclick="listRowClick('${u.id}',${u._enroute?'true':'false'})" oncontextmenu="event.preventDefault();listRowCtx('${u.id}',event)">
+      <td class="unit">${u.unit}${u.own?'<span class="list-own-badge">OWN</span>':''}</td>
+      <td>${typeIcon(u.type)} ${typeName(u.type)}</td>
+      <td>${u.customer}</td>
+      <td><span class="list-lane-tag ${lc[u.lane]}">${ll[u.lane]}</span></td>
+      <td>${dwellCell}</td>
+      <td style="font-size:11px;font-family:var(--font-data);color:${agent?agent.color:'var(--text-lo)'}">${agent?agent.name:'--'}</td>
+      <td>${lockHtml}</td>
+      <td style="font-family:var(--font-data);font-size:11px;color:var(--text-lo)">${u.soNumber||'--'}</td>
+      <td><span class="expand-chevron">&#9660;</span></td>
+    </tr>
+    <tr class="list-history-row" id="hist-row-${u.id}" style="display:none"><td colspan="9"><div class="list-history-inner" id="hist-inner-${u.id}"></div></td></tr>`;
+  });
+  tbody.innerHTML = html;
+}
+
+function listRowClick(id, isEnRoute){
+  // Toggle expanded history
+  const histRow = document.getElementById('hist-row-'+id);
+  const histInner = document.getElementById('hist-inner-'+id);
+  const tr = document.querySelector(`tr[data-id="${id}"]`);
+  if(!histRow) return;
+  const isOpen = histRow.style.display !== 'none';
+  // Close all
+  document.querySelectorAll('.list-history-row').forEach(r=>r.style.display='none');
+  document.querySelectorAll('tbody tr:not(.list-history-row)').forEach(r=>r.classList.remove('expanded'));
+  if(isOpen){ expandedListRow=null; return; }
+  // Open this one
+  const u = isEnRoute
+    ? enRouteUnits.find(x=>x.id===id)
+    : units.find(x=>x.id===id);
+  if(!u) return;
+  histInner.innerHTML = u.history.slice().reverse().map(h=>
+    `<div class="list-history-item"><div class="list-history-date">${fmtDate(h.date)}</div><div><div class="list-history-type">${h.type}</div><div class="list-history-tech">${h.tech}</div></div></div>`
+  ).join('') || '<div style="color:var(--text-lo);font-size:12px">No history recorded</div>';
+  histRow.style.display='';
+  if(tr){ tr.classList.add('expanded'); }
+  expandedListRow = id;
+}
+function listRowCtx(id,e){
+  const u=units.find(x=>x.id===id);
+  if(u){ ctxTarget=u; openCtxAt(e.clientX,e.clientY); }
+}
+
+// ── Context menu ──────────────────────────────────────────────────────────────
+function openCtx(u,e){ ctxTarget=u; openCtxAt(e.clientX,e.clientY); }
+function openCtxAt(x,y){
+  closeTooltip();
+  const m=document.getElementById('ctx-menu');
+  m.style.left=Math.min(x,window.innerWidth-215)+'px';
+  m.style.top=Math.min(y,window.innerHeight-220)+'px';
+  m.classList.add('visible');
+}
+function closeCtx(){ const m=document.getElementById('ctx-menu'); if(m) m.classList.remove('visible'); }
+function ctxMoveToLane(lane){
+  if(!ctxTarget) return;
+  const u=units.find(x=>x.id===ctxTarget.id);
+  if(u){ u.lane=lane; showToast(u.unit+' moved to '+lane); }
+  closeCtx(); render();
+}
+function ctxEdit(){ if(!ctxTarget){closeCtx();return;} closeCtx(); openEditModal(ctxTarget); }
+function ctxRemove(){
+  if(!ctxTarget) return;
+  removeTargetId=ctxTarget.id;
+  const u=units.find(x=>x.id===ctxTarget.id);
+  if(!u) return;
+  document.getElementById('confirm-body').innerHTML='Remove <strong>'+u.unit+'</strong> ('+u.customer+') from the yard?<br><br>The service order remains in Fullbay.';
+  document.getElementById('confirm-modal').classList.add('visible');
+  closeCtx();
+}
+function closeConfirmModal(){ document.getElementById('confirm-modal').classList.remove('visible'); removeTargetId=null; }
+function confirmRemove(){
+  if(!removeTargetId) return;
+  const u=units.find(x=>x.id===removeTargetId);
+  units=units.filter(x=>x.id!==removeTargetId);
+  closeConfirmModal(); render();
+  if(u) showToast(u.unit+' removed from yard');
+}
+
+// ── Add/Edit modal ────────────────────────────────────────────────────────────
+function openAddModal(){
+  editingId=null;
+  document.getElementById('modal-title').textContent='Add unit to yard';
+  document.getElementById('modal-submit-btn').textContent='Add to yard';
+  ['f-vin','f-customer','f-tech','f-so','f-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-type').selectedIndex=0;
+  document.getElementById('f-lane').value='inbound';
+  document.getElementById('f-own').value='no';
+  document.getElementById('vin-hint').textContent='Tap "AI Scan" to simulate C-3PO OCR handshake';
+  document.getElementById('vin-hint').className='vin-hint';
+  document.getElementById('add-modal').classList.add('visible');
+}
+function openEditModal(u){
+  editingId=u.id;
+  document.getElementById('modal-title').textContent='Edit unit';
+  document.getElementById('modal-submit-btn').textContent='Save changes';
+  document.getElementById('f-vin').value=u.unit;
+  document.getElementById('f-customer').value=u.customer;
+  document.getElementById('f-tech').value=u.tech||'';
+  document.getElementById('f-so').value=u.soNumber||'';
+  document.getElementById('f-notes').value=u.notes||'';
+  document.getElementById('f-type').value=u.type;
+  document.getElementById('f-lane').value=u.lane;
+  document.getElementById('f-own').value=u.own?'yes':'no';
+  document.getElementById('add-modal').classList.add('visible');
+}
+function closeAddModal(){ document.getElementById('add-modal').classList.remove('visible'); editingId=null; }
+function submitUnit(){
+  const unit=document.getElementById('f-vin').value.trim();
+  const customer=document.getElementById('f-customer').value.trim();
+  const tech=document.getElementById('f-tech').value.trim()||'--';
+  const so=document.getElementById('f-so').value.trim()||'--';
+  const notes=document.getElementById('f-notes').value.trim();
+  const type=document.getElementById('f-type').value;
+  const lane=document.getElementById('f-lane').value;
+  const own=document.getElementById('f-own').value==='yes';
+  if(!unit){ document.getElementById('f-vin').focus(); return; }
+  if(editingId){
+    const u=units.find(x=>x.id===editingId);
+    if(u) Object.assign(u,{unit,customer,tech,soNumber:so,notes,type,lane,own});
+    showToast(unit+' updated');
+  } else {
+    units.push({id:uid(),unit,customer,type,lane,own,dwellHrs:0.05,soNumber:so,tech,notes,priority:false,
+      locked:true,bookHrs:null,actualHrs:null,lastAgent:'c3po',lastAgentAction:'Manual intake logged',
+      history:[{date:new Date(),type:'Yard Check In',tech:tech!='--'?tech:'Front Office'}]});
+    showToast(unit+' added to '+lane);
+  }
+  closeAddModal(); render();
+}
+
+// ── AI VIN scan ───────────────────────────────────────────────────────────────
+const fakeVINs=[
+  {unit:'TRK-6691',customer:'Rio Grande Carriers',type:'\u{1F69A} Day Cab Tractor',so:'SO-29910',tech:'Ryan A.'},
+  {unit:'TANK-882',customer:'Permian Basin Chem',type:'\u{1F6E2} Tanker',so:'SO-29911',tech:'Jacob R.'},
+  {unit:'TRL-034',customer:'Harris County Fleet',type:'\u{1F69C} Dry Van Trailer',so:'SO-29912',tech:'Jacob R.'},
+];
+function simulateVinScan(){
+  const btn=document.getElementById('scan-btn');
+  const hint=document.getElementById('vin-hint');
+  btn.classList.add('scanning'); btn.textContent='C-3PO Reading...';
+  hint.className='vin-hint scanning'; hint.textContent='C-3PO parsing telematics...';
+  setTimeout(()=>{
+    const pick=fakeVINs[Math.floor(Math.random()*fakeVINs.length)];
+    document.getElementById('f-vin').value=pick.unit;
+    document.getElementById('f-customer').value=pick.customer;
+    document.getElementById('f-type').value=pick.type;
+    document.getElementById('f-so').value=pick.so;
+    document.getElementById('f-tech').value=pick.tech;
+    btn.classList.remove('scanning'); btn.textContent='\u{1F4F7} AI Scan';
+    hint.className='vin-hint success';
+    hint.textContent='\u2713 C-3PO matched -- fields auto-populated from Fullbay records';
+  },1800);
+}
+
+// ── Handshake demo ────────────────────────────────────────────────────────────
+const hsUnits=[
+  {unit:'TRK-7790',customer:'Coastal Logistics',type:'\u{1F69A} Sleeper Cab',so:'SO-29960',tech:'Ryan A.',fault:'Brake fade DTC P0571',distanceMi:0.08,speedMph:10},
+  {unit:'FLTBD-221',customer:'Lone Star Freight',type:'\u{1F6FB} Flatbed Trailer',so:'SO-29961',tech:'Jacob R.',fault:'Suspension DTC C1234',distanceMi:0.05,speedMph:5},
+  {unit:'EMS-091',customer:'Galveston County EMS',type:'\u{1F691} Emergency / EMS',so:'SO-29962',tech:'Jacob R.',fault:'Aerial hydraulics DTC P2187',distanceMi:0.12,speedMph:15},
+];
+function openHandshakeDemo(){
+  const pick=hsUnits[Math.floor(Math.random()*hsUnits.length)];
+  pendingArrival=pick;
+  document.getElementById('hs-title').textContent='Geofence Acquired -- '+pick.unit;
+  document.getElementById('hs-sub').textContent='Unit '+pick.unit+' ('+pick.customer+') entered geofence. C-3PO initiating handshake. Fault: '+pick.fault;
+  document.getElementById('hs-confirm-btn').disabled=true;
+  document.getElementById('hs-confirm-btn').style.opacity='0.4';
+  document.getElementById('hs-confirm-btn').textContent='Agents firing...';
+  ['af-c3po','af-lobot','af-ig11','af-bb8','af-k3po','af-chopper'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.classList.remove('fired');
+  });
+  document.getElementById('handshake-modal').classList.add('visible');
+  [300,800,1200,1700,2100,2600].forEach((delay,i)=>{
+    const id=['af-c3po','af-lobot','af-ig11','af-bb8','af-k3po','af-chopper'][i];
+    setTimeout(()=>{
+      const el=document.getElementById(id); if(el) el.classList.add('fired');
+      if(i===5){
+        document.getElementById('hs-confirm-btn').disabled=false;
+        document.getElementById('hs-confirm-btn').style.opacity='1';
+        document.getElementById('hs-confirm-btn').textContent='Add to Inbound Lane';
+      }
+    },delay);
+  });
+}
+function closeHandshakeModal(){ document.getElementById('handshake-modal').classList.remove('visible'); pendingArrival=null; }
+function confirmHandshakeArrival(){
+  if(!pendingArrival) return;
+  const p=pendingArrival;
+  const newUnit={
+    id:uid(),unit:p.unit,customer:p.customer,type:p.type,
+    lane:'inbound',own:false,dwellHrs:0.02,soNumber:p.so,tech:p.tech||'--',
+    locked:true,bookHrs:null,actualHrs:null,
+    lastAgent:'c3po',lastAgentAction:'C-3PO handshake complete -- all agents fired',
+    notes:'Autonomous arrival. Fault: '+p.fault+'. IG-11 lock active. K-3PO bay confirmed.',
+    priority:false,
+    history:[
+      {date:new Date(),type:'C-3PO -- Handshake Complete',tech:'Automated'},
+      {date:new Date(),type:'Lobot -- Payment Pre-Auth Started',tech:'Automated'},
+      {date:new Date(),type:'IG-11 -- Physical Lock Active',tech:'Automated'},
+      {date:new Date(),type:'BB-8 -- Parts Cross-Check Complete',tech:'Automated'},
+      {date:new Date(),type:'K-3PO -- Bay Assignment Confirmed',tech:'Automated'},
+      {date:new Date(),type:'Chopper -- Fleet Manager Notified',tech:'Automated'},
+    ]
+  };
+  units.unshift(newUnit);
+  closeHandshakeModal(); render();
+  setTimeout(()=>{
+    const el=document.querySelector('[data-id="'+newUnit.id+'"]');
+    if(el){ el.classList.add('arriving'); setTimeout(()=>el.classList.remove('arriving'),600); }
+  },50);
+  showToast('\u{1F50C} '+p.unit+' arrived via C-3PO handshake -- 6 agents fired');
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+function renderStats(){
+  const cust=visibleUnits().filter(u=>!u.own);
+  const el=document.getElementById('stats');
+  if(!el||!document.getElementById('count-inbound')) return;
+  el.innerHTML=
+    '<div class="stat-item"><span class="stat-n" style="color:#B8C8D8">'+enRouteUnits.length+'</span><span class="stat-l">en route</span></div>'+
+    '<div class="stat-item"><span class="stat-n" style="color:#38C4F0">'+cust.filter(u=>u.lane==='inbound').length+'</span><span class="stat-l">inbound</span></div>'+
+    '<div class="stat-item"><span class="stat-n" style="color:#E8A020">'+cust.filter(u=>u.lane==='inprogress').length+'</span><span class="stat-l">in progress</span></div>'+
+    '<div class="stat-item"><span class="stat-n" style="color:#4DB87A">'+cust.filter(u=>u.lane==='outbound').length+'</span><span class="stat-l">outbound</span></div>'+
+    '<div class="stat-item"><span class="stat-n" style="color:var(--state-locked)">'+cust.filter(u=>u.locked).length+'</span><span class="stat-l">IG-11</span></div>';
+}
+
+// ── View toggles ──────────────────────────────────────────────────────────────
+function toggleOwnFleet(){
+  showOwnFleet=!showOwnFleet;
+  const btn=document.getElementById('btn-own-fleet');
+  btn.textContent=showOwnFleet?'Hide own fleet':'Show own fleet';
+  btn.classList.toggle('active',showOwnFleet);
+  render();
+}
+function toggleView(){
+  listViewActive=!listViewActive;
+  document.getElementById('list-view').classList.toggle('visible',listViewActive);
+  const btn=document.getElementById('btn-view');
+  btn.textContent=listViewActive?'Yard view':'List view';
+  btn.classList.toggle('active',listViewActive);
+  closeTooltip(); closeCtx();
+  if(listViewActive) renderList();
+}
+
+// ── Accessibility ─────────────────────────────────────────────────────────────
+function toggleDarkLight(){
+  darkMode=!darkMode;
+  document.body.classList.toggle('light',!darkMode);
+  const btn=document.getElementById('btn-dark-light');
+  btn.textContent=darkMode?'Light':'Dark';
+  btn.classList.toggle('on',!darkMode);
+}
+function toggleColorblind(){
+  colorblind=!colorblind;
+  document.body.classList.toggle('colorblind',colorblind);
+  const btn=document.getElementById('btn-colorblind');
+  btn.classList.toggle('on',colorblind);
+  btn.classList.toggle('cb',colorblind);
+  showToast(colorblind?'Colorblind-safe palette active (CB mode)':'Standard palette restored');
+}
+function toggleGrayscale(){
+  grayscale=!grayscale;
+  document.body.classList.toggle('grayscale',grayscale);
+  const btn=document.getElementById('btn-grayscale');
+  btn.classList.toggle('on',grayscale);
+  btn.classList.toggle('gs',grayscale);
+}
+function cycleFontSize(){
+  fontScale=(fontScale+1)%fontScales.length;
+  document.documentElement.style.setProperty('--font-scale',fontScales[fontScale]);
+  const btn=document.getElementById('btn-fontsize');
+  btn.textContent=['A','A+','A++'][fontScale];
+  btn.classList.toggle('on',fontScale>0);
+}
+
+// ── Location switcher ─────────────────────────────────────────────────────────
+const locations={
+  'integrity-houston':{name:'Integrity Fleet Services',sub:'Houston, TX',type:'shop'},
+  'lone-star-yard':{name:'Lone Star Freight -- Yard A',sub:'Pasadena, TX',type:'remote'},
+  'gulf-transport-yard':{name:'Gulf Transport LLC -- Depot',sub:'Baytown, TX',type:'remote'},
+  'beaumont-yard':{name:'Beaumont Bulk -- Tank Farm',sub:'Beaumont, TX',type:'remote'},
+};
+function toggleLocDropdown(){
+  const btn=document.getElementById('loc-btn');
+  const dd=document.getElementById('loc-dropdown');
+  const isOpen=dd.classList.contains('open');
+  dd.classList.toggle('open',!isOpen);
+  btn.classList.toggle('open',!isOpen);
+}
+function closeLocDropdown(){
+  const dd=document.getElementById('loc-dropdown');
+  const btn=document.getElementById('loc-btn');
+  if(dd) dd.classList.remove('open');
+  if(btn) btn.classList.remove('open');
+}
+function switchLocation(el){
+  const loc=el.dataset.loc;
+  if(!loc||!locations[loc]){closeLocDropdown();return;}
+  const L=locations[loc];
+  document.getElementById('loc-btn-name').textContent=L.name;
+  document.getElementById('loc-btn-type').textContent=' \u00b7 '+L.sub.split(' \u00b7 ')[0];
+  document.getElementById('loc-dot').className='loc-type-dot '+L.type;
+  document.querySelectorAll('.loc-option').forEach(o=>{
+    o.classList.remove('active');
+    const c=o.querySelector('.loc-active-check'); if(c) c.remove();
+  });
+  el.classList.add('active');
+  const check=document.createElement('span');
+  check.className='loc-active-check'; check.textContent='\u2713';
+  el.appendChild(check);
+  closeLocDropdown();
+  if(L.type!=='shop') showToast(L.name+' -- stub view. Real data wired per location in production.');
+  else showToast('Switched to '+L.name);
+}
+function stubBranch(){ closeLocDropdown(); showToast('Branch location setup -- product scope TBD'); }
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+// ── Clock ─────────────────────────────────────────────────────────────────────
+function updateClock(){
+  document.getElementById('clock').textContent=
+    new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit'});
+}
+updateClock(); setInterval(updateClock,1000);
+
+// ── Global dismiss ────────────────────────────────────────────────────────────
+document.addEventListener('click',e=>{
+  const tip=document.getElementById('tooltip');
+  const ctx=document.getElementById('ctx-menu');
+  const loc=document.getElementById('loc-dropdown');
+  const locBtn=document.getElementById('loc-btn');
+  if(tip&&!tip.contains(e.target)) closeTooltip();
+  if(ctx&&!ctx.contains(e.target)) closeCtx();
+  if(loc&&!loc.contains(e.target)&&locBtn&&!locBtn.contains(e.target)) closeLocDropdown();
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){closeTooltip();closeCtx();closeAddModal();closeConfirmModal();closeHandshakeModal();}
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+render();
+startEnRouteTimer();
+</script>
+</body>
+</html>

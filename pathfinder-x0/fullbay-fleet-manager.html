@@ -1,1 +1,780 @@
-Fleet manager view
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fullbay X -- Fleet Manager View</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07080A; --surface:#0E1014; --surface2:#141618; --surface3:#1C1E22;
+  --chrome:#111316; --border:rgba(255,255,255,0.06); --border-hi:rgba(255,255,255,0.12);
+  --text:#E4E4E0; --text-mid:#A0A09C; --text-lo:#505050;
+  --font-ui:'Inter',system-ui,sans-serif; --font-data:'JetBrains Mono',monospace;
+  --fullbay:#60A5FA;
+  --agent-c3po:#60A5FA; --agent-r2d2:#38C4F0; --agent-bb8:#FBBF24;
+  --agent-l337:#34D399; --agent-k2so:#94A3B8; --agent-lobot:#F472B6;
+  --agent-ig11:#EF4444; --agent-chopper:#FB923C; --agent-k3po:#E2E8F0;
+  --agent-mc80a:#A78BFA;
+  --status-enroute:#B8C8D8; --status-inshop:#E8A020;
+  --status-complete:#4DB87A; --status-hold:#EF4444;
+}
+html,body{height:100%;font-family:var(--font-ui);background:var(--bg);color:var(--text);overflow:hidden}
+#app{display:grid;grid-template-rows:36px 52px 1fr;height:100vh}
+
+/* ── System nav ── */
+#sys-nav{background:#040506;border-bottom:1px solid rgba(96,165,250,0.18);
+  display:flex;align-items:center;padding:0 18px;height:36px;gap:0}
+.sys-logo{font-family:var(--font-data);font-size:11px;font-weight:700;color:var(--fullbay);
+  letter-spacing:.12em;text-transform:uppercase;margin-right:20px}
+.sys-logo span{color:rgba(96,165,250,0.4);font-weight:400}
+.nav-link{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
+  color:rgba(255,255,255,0.25);padding:0 14px;height:36px;display:flex;align-items:center;
+  border-bottom:2px solid transparent;transition:all .15s;cursor:pointer;
+  font-family:var(--font-data);text-decoration:none}
+.nav-link:hover{color:rgba(255,255,255,0.55)}
+.nav-link.active{color:var(--fullbay);border-bottom-color:var(--fullbay)}
+.nav-link.stub{color:rgba(255,255,255,0.14);cursor:default}
+.nav-divider{width:1px;height:18px;background:rgba(255,255,255,0.07);margin:0 4px}
+.mc80a-status{display:flex;align-items:center;gap:6px;padding:0 12px;
+  border-left:1px solid rgba(255,255,255,0.07);margin-left:8px}
+.mc80a-dot{width:7px;height:7px;border-radius:50%;background:var(--agent-mc80a);
+  box-shadow:0 0 6px var(--agent-mc80a);animation:mc-pulse 3s ease-in-out infinite}
+@keyframes mc-pulse{0%,100%{opacity:1}50%{opacity:0.45}}
+.mc80a-label{font-size:10px;font-family:var(--font-data);color:var(--agent-mc80a);font-weight:700;letter-spacing:.06em}
+.mc80a-state{font-size:10px;color:rgba(255,255,255,0.3);font-family:var(--font-data)}
+.sys-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.fleet-selector{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);
+  border-radius:5px;color:var(--text-mid);font-size:11px;font-family:var(--font-data);
+  font-weight:600;padding:3px 8px;cursor:pointer;letter-spacing:.04em}
+.prototype-pill{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:#5A3E10;background:#3A2708;border:1px solid #6A4A12;border-radius:4px;
+  padding:2px 7px;font-family:var(--font-data)}
+
+/* ── Header ── */
+header{background:var(--chrome);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;padding:0 18px;gap:12px}
+.header-left{display:flex;align-items:center;gap:12px}
+.wordmark{font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.wordmark span{color:var(--text-lo);font-weight:400}
+.divider-v{width:1px;height:18px;background:var(--border)}
+.fleet-name{font-size:13px;font-weight:600;color:var(--text-mid)}
+.header-stats{display:flex;gap:16px}
+.hstat{display:flex;align-items:baseline;gap:4px}
+.hstat-n{font-family:var(--font-data);font-size:18px;font-weight:700}
+.hstat-l{font-size:10px;color:var(--text-lo)}
+.header-right{display:flex;align-items:center;gap:8px}
+.btn{background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:6px;
+  color:var(--text-mid);font-size:11px;font-family:var(--font-ui);font-weight:600;
+  letter-spacing:.05em;text-transform:uppercase;padding:5px 10px;cursor:pointer;transition:all .15s}
+.btn:hover{border-color:rgba(255,255,255,0.18);color:var(--text);background:rgba(255,255,255,0.09)}
+.btn.active{border-color:#4DB87A;color:#4DB87A;background:rgba(77,184,122,0.1)}
+.live-dot{width:7px;height:7px;border-radius:50%;background:#34D399;
+  box-shadow:0 0 6px #34D399;animation:livepulse 2.4s ease-in-out infinite;flex-shrink:0}
+@keyframes livepulse{0%,100%{opacity:1}50%{opacity:.4}}
+.clock{font-size:11px;font-family:var(--font-data);color:var(--text-lo)}
+
+/* ── Main layout ── */
+#main{display:grid;grid-template-columns:1fr 340px;grid-template-rows:1fr 200px;overflow:hidden}
+
+/* ── Map panel ── */
+#map-panel{grid-row:1/3;position:relative;overflow:hidden;background:var(--bg);
+  border-right:1px solid var(--border)}
+#map-svg{width:100%;height:100%}
+.map-bg{fill:#0A0C0F}
+.map-road{stroke:rgba(255,255,255,0.055);stroke-width:1;fill:none}
+.map-highway{stroke:rgba(255,255,255,0.09);stroke-width:1.5;fill:none}
+.map-water{fill:#0A1420;opacity:0.7}
+.map-shop-dot{fill:#60A5FA}
+.map-shop-label{font-family:'JetBrains Mono',monospace;font-size:9px;fill:#60A5FA;font-weight:700;letter-spacing:.04em}
+.map-city-label{font-family:'JetBrains Mono',monospace;font-size:9px;fill:rgba(255,255,255,0.18);letter-spacing:.06em}
+.route-line{stroke:var(--agent-r2d2);stroke-width:1.5;fill:none;stroke-dasharray:6 4;
+  animation:route-march 2s linear infinite;opacity:0.7}
+@keyframes route-march{to{stroke-dashoffset:-20}}
+.geofence-ring{fill:none;stroke:rgba(96,165,250,0.12);stroke-width:1}
+.asset-pin{cursor:pointer;transition:transform .15s}
+.asset-pin:hover{transform:scale(1.25)}
+.map-legend{position:absolute;bottom:16px;left:16px;background:rgba(7,8,10,0.9);
+  border:1px solid var(--border-hi);border-radius:8px;padding:10px 14px;
+  display:flex;flex-direction:column;gap:5px}
+.map-legend-item{display:flex;align-items:center;gap:7px;font-size:10px;
+  color:var(--text-mid);font-family:var(--font-data)}
+.ml-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.map-label{position:absolute;top:16px;left:16px;font-family:var(--font-data);font-size:10px;
+  font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,0.18)}
+@keyframes en-pulse{0%,100%{opacity:0.25}50%{opacity:0.55}}
+
+/* ── Asset list panel ── */
+#asset-list-panel{grid-row:1/2;background:var(--surface);border-bottom:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden}
+.panel-header{padding:12px 14px 10px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:8px;flex-shrink:0}
+.panel-title{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--text-lo);font-family:var(--font-data)}
+.panel-count{font-size:11px;color:var(--text-lo);font-family:var(--font-data);margin-left:auto}
+.filter-tabs{display:flex;gap:0;padding:0 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+.filter-tab{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--text-lo);padding:7px 10px;cursor:pointer;border-bottom:2px solid transparent;
+  transition:all .15s;font-family:var(--font-data);white-space:nowrap}
+.filter-tab:hover{color:var(--text-mid)}
+.filter-tab.active{color:var(--fullbay);border-bottom-color:var(--fullbay)}
+.asset-list{flex:1;overflow-y:auto}
+.asset-list::-webkit-scrollbar{width:3px}
+.asset-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px}
+.asset-row{display:grid;grid-template-columns:1fr auto;gap:8px;padding:10px 14px;
+  border-bottom:1px solid rgba(255,255,255,0.04);cursor:pointer;transition:background .1s;align-items:start}
+.asset-row:hover{background:rgba(255,255,255,0.04)}
+.asset-row.selected{background:rgba(96,165,250,0.08);border-left:2px solid var(--fullbay)}
+.asset-unit{font-family:var(--font-data);font-size:13px;font-weight:700;color:var(--text);line-height:1}
+.asset-customer{font-size:11px;color:var(--text-lo);margin-top:2px}
+.asset-location{font-size:11px;color:var(--text-mid);margin-top:1px}
+.asset-right{text-align:right}
+.status-pill{font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+  padding:2px 7px;border-radius:99px;border:1px solid;font-family:var(--font-data);white-space:nowrap}
+.sp-enroute{color:var(--status-enroute);border-color:rgba(184,200,216,0.3);background:rgba(184,200,216,0.08)}
+.sp-inshop{color:var(--status-inshop);border-color:rgba(232,160,32,0.3);background:rgba(232,160,32,0.08)}
+.sp-complete{color:var(--status-complete);border-color:rgba(77,184,122,0.3);background:rgba(77,184,122,0.08)}
+.sp-hold{color:var(--status-hold);border-color:rgba(239,68,68,0.3);background:rgba(239,68,68,0.08)}
+.asset-dwell{font-size:10px;color:var(--text-lo);font-family:var(--font-data);margin-top:3px}
+
+/* ── Chopper feed ── */
+#event-feed-panel{background:var(--surface);display:flex;flex-direction:column;overflow:hidden}
+.feed-header{padding:8px 14px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:8px;flex-shrink:0}
+.feed-title{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--text-lo);font-family:var(--font-data)}
+.chopper-badge{font-size:10px;font-family:var(--font-data);font-weight:700;color:var(--agent-chopper);
+  background:rgba(251,146,60,0.1);border:1px solid rgba(251,146,60,0.25);border-radius:4px;padding:1px 6px}
+.feed-list{flex:1;overflow-y:auto;padding:4px 0}
+.feed-list::-webkit-scrollbar{width:3px}
+.feed-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:2px}
+.feed-item{display:flex;align-items:flex-start;gap:8px;padding:6px 14px;
+  border-bottom:1px solid rgba(255,255,255,0.03)}
+.feed-item.new{animation:feed-in .35s ease-out}
+@keyframes feed-in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.feed-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:3px}
+.feed-content{flex:1;min-width:0}
+.feed-event{font-size:11px;color:var(--text);line-height:1.4}
+.feed-meta{font-size:10px;color:var(--text-lo);font-family:var(--font-data);margin-top:1px}
+.feed-time{font-size:10px;color:var(--text-lo);font-family:var(--font-data);white-space:nowrap;flex-shrink:0}
+
+/* ── Detail overlay ── */
+#detail-overlay{position:absolute;top:88px;right:0;bottom:0;width:400px;
+  background:var(--surface2);border-left:1px solid var(--border-hi);
+  display:none;flex-direction:column;overflow:hidden;z-index:50;
+  box-shadow:-8px 0 32px rgba(0,0,0,0.6)}
+#detail-overlay.visible{display:flex}
+.detail-header{padding:14px 16px 12px;border-bottom:1px solid var(--border);
+  display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0}
+.detail-unit{font-family:var(--font-data);font-size:20px;font-weight:700;line-height:1}
+.detail-type{font-size:11px;color:var(--text-lo);margin-top:3px}
+.detail-close{background:none;border:none;color:var(--text-lo);font-size:16px;cursor:pointer;padding:4px;border-radius:4px}
+.detail-close:hover{color:var(--text);background:rgba(255,255,255,.07)}
+.detail-body{flex:1;overflow-y:auto}
+.detail-body::-webkit-scrollbar{width:3px}
+.detail-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px}
+.detail-section{padding:14px 16px;border-bottom:1px solid var(--border)}
+.detail-section-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--text-lo);margin-bottom:10px;font-family:var(--font-data)}
+.detail-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px;gap:12px}
+.detail-row:last-child{margin-bottom:0}
+.detail-key{font-size:12px;color:var(--text-lo)}
+.detail-val{font-size:12px;font-weight:600;color:var(--text);font-family:var(--font-data);text-align:right}
+.detail-val.green{color:#4DB87A}.detail-val.amber{color:#E8A020}.detail-val.red{color:#EF4444}.detail-val.blue{color:#60A5FA}.detail-val.pink{color:#F472B6}
+.bva-row{margin-bottom:10px}
+.bva-label-row{display:flex;justify-content:space-between;font-size:10px;margin-bottom:4px}
+.bva-label-row span:first-child{color:var(--text-lo)}
+.bva-label-row span:last-child{font-family:var(--font-data);font-weight:700}
+.bva-bar{height:6px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden}
+.bva-fill{height:100%;border-radius:3px;transition:width .4s}
+.agent-status-row{display:flex;align-items:center;gap:8px;padding:6px 0;
+  border-bottom:1px solid rgba(255,255,255,0.04)}
+.agent-status-row:last-child{border-bottom:none}
+.agent-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.agent-name{font-family:var(--font-data);font-size:11px;font-weight:700;width:56px;flex-shrink:0}
+.agent-status-text{font-size:11px;color:var(--text-mid);flex:1}
+.agent-check{font-size:11px;font-family:var(--font-data);font-weight:700}
+.payment-table{width:100%}
+.pt-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px}
+.pt-row:last-child{border-bottom:none;font-weight:700;padding-top:8px}
+.pt-label{color:var(--text-lo)}
+.pt-val{font-family:var(--font-data);font-weight:600}
+.pt-val.pos{color:#4DB87A}.pt-val.neg{color:#E03030}
+.yard-link{display:flex;align-items:center;justify-content:center;gap:8px;
+  margin:14px 16px;padding:10px;background:rgba(96,165,250,0.1);
+  border:1px solid rgba(96,165,250,0.3);border-radius:8px;cursor:pointer;
+  transition:all .15s;text-decoration:none;color:#60A5FA;font-weight:600;font-size:13px}
+.yard-link:hover{background:rgba(96,165,250,0.2)}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+  background:rgba(14,16,20,0.96);border:1px solid var(--border-hi);border-radius:8px;
+  padding:8px 16px;font-size:12px;color:var(--text-mid);z-index:500;
+  opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap}
+#toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div id="app">
+
+<nav id="sys-nav">
+  <span class="sys-logo">Fullbay <span>X.0</span></span>
+  <a class="nav-link" href="fullbay-yard-view.html">Yard View</a>
+  <div class="nav-divider"></div>
+  <a class="nav-link" href="switzerland-flow.html">Flow Map</a>
+  <div class="nav-divider"></div>
+  <div class="nav-link active">Fleet Manager</div>
+  <div class="mc80a-status">
+    <div class="mc80a-dot"></div>
+    <span class="mc80a-label">MC80A</span>
+    <span class="mc80a-state" id="mc80a-state">Monitoring 8 assets</span>
+  </div>
+  <div class="sys-right">
+    <select class="fleet-selector" onchange="showToast('Fleet switched -- stub in prototype')">
+      <option>Gulf Coast Logistics -- All Fleets</option>
+      <option>Lone Star Freight</option>
+      <option>Panhandle Trucking</option>
+    </select>
+    <span class="prototype-pill">Prototype</span>
+  </div>
+</nav>
+
+<header>
+  <div class="header-left">
+    <span class="wordmark">Fleet Manager <span>/ Asset Disposition</span></span>
+    <div class="divider-v"></div>
+    <span class="fleet-name">Gulf Coast Logistics &mdash; Houston region</span>
+    <div class="divider-v"></div>
+    <div class="header-stats" id="header-stats"></div>
+  </div>
+  <div class="header-right">
+    <button class="btn active" id="btn-map" onclick="setView('map')">Map view</button>
+    <button class="btn" id="btn-list" onclick="setView('list')">List view</button>
+    <div class="live-dot"></div>
+    <span class="clock" id="clock">--:--</span>
+  </div>
+</header>
+
+<div id="main">
+
+  <!-- Map -->
+  <div id="map-panel">
+    <span class="map-label">Gulf Coast Region &mdash; R2-D2 Live Routing</span>
+    <svg id="map-svg" viewBox="0 0 900 600" preserveAspectRatio="xMidYMid slice">
+      <rect width="900" height="600" class="map-bg"/>
+      <!-- Gulf water -->
+      <path d="M0 480 Q200 445 400 462 Q600 480 900 452 L900 600 L0 600 Z" class="map-water"/>
+      <!-- Houston Ship Channel -->
+      <path d="M500 400 Q545 425 565 462 Q582 492 605 515" stroke="#0A1420" stroke-width="20" fill="none"/>
+      <!-- I-10 -->
+      <line x1="0" y1="225" x2="900" y2="222" class="map-highway"/>
+      <!-- I-45 -->
+      <line x1="478" y1="0" x2="516" y2="600" class="map-highway"/>
+      <!-- I-610 loop approximation -->
+      <ellipse cx="492" cy="292" rx="175" ry="138" class="map-road"/>
+      <!-- Secondary -->
+      <line x1="0" y1="300" x2="900" y2="318" class="map-road"/>
+      <line x1="0" y1="380" x2="900" y2="365" class="map-road"/>
+      <line x1="290" y1="0" x2="278" y2="600" class="map-road"/>
+      <line x1="665" y1="0" x2="682" y2="600" class="map-road"/>
+      <!-- Geofences -->
+      <circle cx="492" cy="292" r="22" class="geofence-ring"/>
+      <circle cx="622" cy="338" r="18" class="geofence-ring"/>
+      <circle cx="682" cy="182" r="16" class="geofence-ring"/>
+      <!-- Shop dots -->
+      <circle cx="492" cy="292" r="6" class="map-shop-dot"/>
+      <circle cx="622" cy="338" r="5" class="map-shop-dot" opacity="0.7"/>
+      <circle cx="682" cy="182" r="5" class="map-shop-dot" opacity="0.65"/>
+      <!-- Shop labels -->
+      <text x="502" y="280" class="map-shop-label">INTEGRITY</text>
+      <text x="632" y="327" class="map-shop-label" font-size="8">OPEN BAY</text>
+      <text x="692" y="171" class="map-shop-label" font-size="8">TDI SERVICES</text>
+      <!-- City labels -->
+      <text x="468" y="314" class="map-city-label">HOUSTON</text>
+      <text x="596" y="418" class="map-city-label">GALVESTON</text>
+      <text x="148" y="292" class="map-city-label">KATY</text>
+      <text x="718" y="288" class="map-city-label">BAYTOWN</text>
+      <text x="344" y="172" class="map-city-label">KINGWOOD</text>
+      <!-- R2-D2 routing lines -->
+      <path d="M235 182 Q335 222 432 272" class="route-line" id="route-7701"/>
+      <path d="M698 378 Q636 362 633 346" class="route-line" id="route-904"/>
+      <path d="M118 348 Q275 312 462 296" class="route-line" id="route-5503"/>
+      <!-- Asset pins -->
+      <g id="asset-pins"></g>
+    </svg>
+    <div class="map-legend">
+      <div class="map-legend-item"><div class="ml-dot" style="background:#60A5FA"></div>Fullbay shop</div>
+      <div class="map-legend-item"><div class="ml-dot" style="background:var(--status-enroute)"></div>En route (R2-D2)</div>
+      <div class="map-legend-item"><div class="ml-dot" style="background:var(--status-inshop)"></div>In shop</div>
+      <div class="map-legend-item"><div class="ml-dot" style="background:var(--status-complete)"></div>Complete</div>
+      <div class="map-legend-item"><div class="ml-dot" style="background:var(--status-hold)"></div>On hold</div>
+    </div>
+  </div>
+
+  <!-- Asset list -->
+  <div id="asset-list-panel">
+    <div class="panel-header">
+      <span class="panel-title">Assets</span>
+      <span class="panel-count" id="asset-count">-- units</span>
+    </div>
+    <div class="filter-tabs">
+      <div class="filter-tab active" onclick="setFilter('all',this)">All</div>
+      <div class="filter-tab" onclick="setFilter('enroute',this)">En Route</div>
+      <div class="filter-tab" onclick="setFilter('inshop',this)">In Shop</div>
+      <div class="filter-tab" onclick="setFilter('complete',this)">Complete</div>
+      <div class="filter-tab" onclick="setFilter('hold',this)">On Hold</div>
+    </div>
+    <div class="asset-list" id="asset-list"></div>
+  </div>
+
+  <!-- Chopper feed -->
+  <div id="event-feed-panel">
+    <div class="feed-header">
+      <span class="feed-title">Chopper</span>
+      <span class="chopper-badge">Live event feed</span>
+    </div>
+    <div class="feed-list" id="feed-list"></div>
+  </div>
+
+</div>
+</div>
+
+<!-- Detail overlay -->
+<div id="detail-overlay">
+  <div class="detail-header">
+    <div>
+      <div class="detail-unit" id="d-unit">--</div>
+      <div class="detail-type" id="d-type">--</div>
+    </div>
+    <button class="detail-close" onclick="closeDetail()">&#x2715;</button>
+  </div>
+  <div class="detail-body">
+    <div class="detail-section">
+      <div class="detail-section-label">Disposition</div>
+      <div class="detail-row"><span class="detail-key">Status</span><span class="detail-val" id="d-status">--</span></div>
+      <div class="detail-row"><span class="detail-key">Location</span><span class="detail-val blue" id="d-location">--</span></div>
+      <div class="detail-row"><span class="detail-key">Time in yard</span><span class="detail-val" id="d-dwell">--</span></div>
+      <div class="detail-row"><span class="detail-key">Est. return</span><span class="detail-val green" id="d-eta">--</span></div>
+      <div class="detail-row"><span class="detail-key">Service order</span><span class="detail-val blue" id="d-so">--</span></div>
+    </div>
+    <div class="detail-section" id="d-bva-section">
+      <div class="detail-section-label">L3-37 &mdash; Book vs Actual</div>
+      <div class="bva-row">
+        <div class="bva-label-row"><span>Labor time</span><span id="d-bva-vals">--</span></div>
+        <div class="bva-bar"><div class="bva-fill" id="d-bva-fill"></div></div>
+      </div>
+      <div class="detail-row"><span class="detail-key">Variance</span><span class="detail-val" id="d-bva-var">--</span></div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-section-label">Lobot &mdash; Payment</div>
+      <div class="payment-table" id="d-payment"></div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-section-label">Agent status</div>
+      <div id="d-agents"></div>
+    </div>
+    <a class="yard-link" id="d-yard-link" href="fullbay-yard-view.html" target="_blank">
+      <span>&#128205;</span>
+      <span id="d-yard-link-text">View in Yard</span>
+      <span style="opacity:0.5">&#8599;</span>
+    </a>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function fmtDwell(h){
+  if(!h||h<0.01) return '--';
+  if(h<1) return Math.round(h*60)+'m';
+  if(h<24) return Math.round(h)+'h';
+  return Math.floor(h/24)+'d '+(Math.round(h%24))+'h';
+}
+function fmtMiles(m){ return m<1?Math.round(m*5280)+'ft':m.toFixed(1)+'mi'; }
+function fmtETA(mins){
+  if(!mins||mins<0.5) return 'arriving now';
+  if(mins<60) return Math.round(mins)+'min';
+  return Math.floor(mins/60)+'h '+Math.round(mins%60)+'m';
+}
+function fmtMoney(n){ return '$'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function typeIcon(t){ return t?t.split(' ')[0]:'\u{1F69A}'; }
+function typeName(t){ return t?t.split(' ').slice(1).join(' '):'Unknown'; }
+
+// ── Asset data ────────────────────────────────────────────────────────────────
+const assets = [
+  {id:'a1',unit:'TRK-7701',type:'\u{1F69A} Sleeper Cab',customer:'Gulf Coast Logistics',
+    status:'enroute',shop:'Integrity Fleet Services',shopCity:'Houston, TX',
+    distanceMi:4.2,speedMph:35,dwellHrs:0,soNumber:'SO-29950',
+    fault:'DTC P0087 -- Fuel rail pressure low',
+    bookHrs:null,actualHrs:null,
+    payStatus:'Pre-auth active',payInvoice:2840,payFee:56.80,payNet:2783.20,paySettled:false,
+    agentStates:{r2d2:'Routing via I-10 -- ETA 7min',lobot:'ACH pre-auth running',bb8:'Fuel rail kit staged',k3po:'Bay 2 reserved',ig11:'Pending -- fires at arrival',chopper:'Fleet manager notified'},
+    mapX:235,mapY:182,pinColor:'#B8C8D8'},
+  {id:'a2',unit:'TANK-904',type:'\u{1F6E2} Tanker',customer:'Gulf Coast Logistics',
+    status:'enroute',shop:'Integrity Fleet Services',shopCity:'Houston, TX',
+    distanceMi:1.8,speedMph:25,dwellHrs:0,soNumber:'SO-29951',
+    fault:'DTC U0100 -- Lost comm ECM',
+    bookHrs:null,actualHrs:null,
+    payStatus:'ACH verification running',payInvoice:1920,payFee:38.40,payNet:1881.60,paySettled:false,
+    agentStates:{r2d2:'4min out -- approach confirmed',lobot:'ACH verification 60% complete',bb8:'ECM comm kit checked',k3po:'Bay 4 confirmed',ig11:'Pending',chopper:'ETA sent to fleet'},
+    mapX:698,mapY:378,pinColor:'#B8C8D8'},
+  {id:'a3',unit:'TRK-0882',type:'\u{1F69A} Sleeper Cab',customer:'Gulf Coast Logistics',
+    status:'inshop',shop:'Integrity Fleet Services',shopCity:'Houston, TX',
+    distanceMi:0,speedMph:0,dwellHrs:5.5,soNumber:'SO-29822',
+    fault:'Injector set replacement',
+    bookHrs:6.0,actualHrs:5.5,
+    payStatus:'Pre-auth complete -- awaiting K-2SO',payInvoice:4200,payFee:84,payNet:4116,paySettled:false,
+    agentStates:{l337:'5.5h of 6.0h -- on pace',bb8:'Injector set delivered to bay',lobot:'Pre-auth complete -- funds confirmed',ig11:'Locked',chopper:'ETA 30min to fleet'},
+    mapX:480,mapY:282,pinColor:'#E8A020'},
+  {id:'a4',unit:'TRL-2210',type:'\u{1F69C} Dry Van Trailer',customer:'Gulf Coast Logistics',
+    status:'inshop',shop:'Integrity Fleet Services',shopCity:'Houston, TX',
+    distanceMi:0,speedMph:0,dwellHrs:2.1,soNumber:'SO-29808',
+    fault:'ABS module replacement',
+    bookHrs:3.0,actualHrs:2.1,
+    payStatus:'Pre-auth active',payInvoice:1650,payFee:33,payNet:1617,paySettled:false,
+    agentStates:{l337:'2.1h of 3.0h -- on pace',bb8:'ABS module in bay',lobot:'Pre-auth active',ig11:'Locked',chopper:'ETA 1h'},
+    mapX:496,mapY:296,pinColor:'#E8A020'},
+  {id:'a5',unit:'TRK-3340',type:'\u{1F69A} Day Cab Tractor',customer:'Gulf Coast Logistics',
+    status:'inshop',shop:'Integrity Fleet Services',shopCity:'Houston, TX',
+    distanceMi:0,speedMph:0,dwellHrs:9.2,soNumber:'SO-29801',
+    fault:'Clutch + flywheel resurfacing',
+    bookHrs:8.0,actualHrs:9.2,
+    payStatus:'Pre-auth active -- overrun flagged',payInvoice:5800,payFee:116,payNet:5684,paySettled:false,
+    agentStates:{l337:'OVERRUN: 9.2h vs 8.0h book -- fleet notified',bb8:'All parts delivered',lobot:'Pre-auth active -- amount updated',ig11:'Locked',chopper:'Overrun alert sent 6min ago'},
+    mapX:488,mapY:300,pinColor:'#E8A020',overrun:true},
+  {id:'a6',unit:'TRK-5512',type:'\u{1F69A} Sleeper Cab',customer:'Gulf Coast Logistics',
+    status:'complete',shop:'Integrity Fleet Services',shopCity:'Houston, TX',
+    distanceMi:0,speedMph:0,dwellHrs:6.4,soNumber:'SO-29788',
+    fault:'Fifth wheel + kingpin replacement',
+    bookHrs:5.0,actualHrs:4.9,
+    payStatus:'SETTLED',payInvoice:3100,payFee:62,payNet:3038,paySettled:true,
+    agentStates:{l337:'Complete: 4.9h vs 5.0h -- under book',k2so:'Verification passed',lobot:'SETTLED -- receipt in your inbox',ig11:'Released',chopper:'Ready for pickup -- awaiting fleet'},
+    mapX:504,mapY:286,pinColor:'#4DB87A'},
+  {id:'a7',unit:'TRL-5511',type:'\u{1F69C} Dry Van Trailer',customer:'Gulf Coast Logistics',
+    status:'complete',shop:'Integrity Fleet Services',shopCity:'Houston, TX',
+    distanceMi:0,speedMph:0,dwellHrs:7.9,soNumber:'SO-29742',
+    fault:'Door hinge + seal inspection',
+    bookHrs:6.0,actualHrs:5.8,
+    payStatus:'SETTLED',payInvoice:980,payFee:19.60,payNet:960.40,paySettled:true,
+    agentStates:{l337:'Complete: 5.8h vs 6.0h',k2so:'Verification passed',lobot:'SETTLED',ig11:'Released',chopper:'Ready for pickup'},
+    mapX:498,mapY:293,pinColor:'#4DB87A'},
+  {id:'a8',unit:'TRL-7740',type:'\u{1F69C} Dry Van Trailer',customer:'Gulf Coast Logistics',
+    status:'hold',shop:'Integrity Fleet Services',shopCity:'Houston, TX',
+    distanceMi:0,speedMph:0,dwellHrs:29.5,soNumber:'SO-29612',
+    fault:'Axle seal + wheel bearing -- INSURANCE HOLD',
+    bookHrs:6.0,actualHrs:6.1,
+    payStatus:'BLOCKED -- insurance dispute',payInvoice:2200,payFee:44,payNet:2156,paySettled:false,
+    agentStates:{l337:'Repair complete',k2so:'Verification passed',lobot:'HOLD: insurance dispute -- contact fleet ops',ig11:'LOCKED -- awaiting dual auth',chopper:'Escalated -- 29.5h in yard'},
+    mapX:508,mapY:298,pinColor:'#EF4444',priority:true},
+];
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let currentFilter = 'all';
+let selectedAsset = null;
+let currentView = 'map';
+
+// Live distance ticker -- 5 second intervals
+setInterval(()=>{
+  let needsRender = false;
+  assets.filter(a=>a.status==='enroute').forEach(a=>{
+    const dec = (a.speedMph/3600)*5;
+    a.distanceMi = Math.max(0, a.distanceMi - dec);
+    needsRender = true;
+    if(a.distanceMi < 0.12 && !a._arriving){
+      a._arriving = true;
+      setTimeout(()=>{
+        a.status = 'inshop';
+        a.distanceMi = 0;
+        a.dwellHrs = 0.01;
+        a.agentStates.c3po = 'Handshake complete';
+        a.agentStates.ig11 = 'Locked';
+        addFeedEvent(a.unit+' crossed geofence -- C-3PO handshake fired -- IG-11 locked','#60A5FA','C-3PO');
+        renderAll(); renderPins();
+      }, 1000);
+    }
+  });
+  if(needsRender){ renderAll(); renderPins(); }
+  if(selectedAsset){
+    const a = assets.find(x=>x.id===selectedAsset.id);
+    if(a && a.status==='enroute'){
+      try { populateDetail(a); } catch(e){}
+    }
+  }
+  updateMC80A();
+}, 5000);
+
+// ── MC80A ─────────────────────────────────────────────────────────────────────
+function updateMC80A(){
+  const el = document.getElementById('mc80a-state');
+  const dot = document.getElementById('mc80a-dot');
+  if(!el || !dot) return;
+  const conflicts = [];
+  const holds = assets.filter(a=>a.status==='hold').length;
+  const overruns = assets.filter(a=>a.overrun).length;
+  if(holds>0) conflicts.push(holds+' on hold');
+  if(overruns>0) conflicts.push(overruns+' L3-37 overrun');
+  if(conflicts.length===0){
+    el.textContent = 'Monitoring '+assets.length+' assets';
+    el.style.color = 'rgba(255,255,255,0.3)';
+    dot.style.background = 'var(--agent-mc80a)';
+    dot.style.boxShadow = '0 0 6px var(--agent-mc80a)';
+  } else {
+    el.textContent = conflicts.join(' \u00b7 ');
+    el.style.color = '#F59E0B';
+    dot.style.background = '#F59E0B';
+    dot.style.boxShadow = '0 0 8px #F59E0B';
+  }
+}
+
+// ── Feed ──────────────────────────────────────────────────────────────────────
+const seedEvents = [
+  {text:'TRK-7701 departed depot -- R2-D2 routing to Integrity',agent:'R2-D2',color:'#38C4F0',age:14},
+  {text:'TANK-904 fault detected DTC U0100 -- R2-D2 locating shop',agent:'R2-D2',color:'#38C4F0',age:11},
+  {text:'TRK-0882 entered Integrity geofence -- C-3PO handshake fired',agent:'C-3PO',color:'#60A5FA',age:9},
+  {text:'Lobot: TRK-0882 payment pre-auth confirmed -- funds verified',agent:'Lobot',color:'#F472B6',age:8},
+  {text:'IG-11: TRK-0882 physical lock active',agent:'IG-11',color:'#EF4444',age:8},
+  {text:'BB-8: Injector set staged for TRK-0882 Bay 3',agent:'BB-8',color:'#FBBF24',age:7},
+  {text:'L3-37: TRK-3340 overrun flagged -- 9.2h vs 8.0h book',agent:'L3-37',color:'#34D399',age:3},
+  {text:'K-2SO: TRK-5512 post-repair verification passed',agent:'K-2SO',color:'#94A3B8',age:2},
+  {text:'Lobot: TRK-5512 SETTLED -- $3,038.00 deposited -- receipt sent',agent:'Lobot',color:'#F472B6',age:1},
+  {text:'IG-11: TRL-7740 lock maintained -- Lobot payment hold active',agent:'IG-11',color:'#EF4444',age:0},
+];
+let feedEvents = [...seedEvents];
+
+function addFeedEvent(text,color,agent){
+  feedEvents.unshift({text,color,agent,age:0,isNew:true});
+  renderFeed();
+  setTimeout(()=>{ if(feedEvents[0]) feedEvents[0].isNew=false; },400);
+}
+
+function renderFeed(){
+  const list = document.getElementById('feed-list');
+  if(!list) return;
+  list.innerHTML = feedEvents.slice(0,18).map(e=>`
+    <div class="feed-item${e.isNew?' new':''}">
+      <div class="feed-dot" style="background:${e.color}"></div>
+      <div class="feed-content">
+        <div class="feed-event">${e.text}</div>
+        <div class="feed-meta">${e.agent}</div>
+      </div>
+      <div class="feed-time">${e.age===0?'just now':e.age+'m ago'}</div>
+    </div>`).join('');
+}
+
+// Chopper fires random updates
+const chopperUpdates = [
+  {text:'L3-37: TRL-2210 on track -- 2.5h of 3.0h book',agent:'L3-37',color:'#34D399'},
+  {text:'Lobot: TANK-904 ACH verification running',agent:'Lobot',color:'#F472B6'},
+  {text:'K-3PO: Bay 2 confirmed clear for TRK-7701 arrival',agent:'K-3PO',color:'#E2E8F0'},
+  {text:'R2-D2: TRK-7701 -- 3.1mi out via I-10',agent:'R2-D2',color:'#38C4F0'},
+  {text:'BB-8: Fuel rail kit confirmed for TRK-7701',agent:'BB-8',color:'#FBBF24'},
+];
+setInterval(()=>{
+  const pick = chopperUpdates[Math.floor(Math.random()*chopperUpdates.length)];
+  feedEvents.forEach(e=>e.age++);
+  addFeedEvent(pick.text, pick.color, pick.agent);
+}, 28000);
+
+// ── Map pins ──────────────────────────────────────────────────────────────────
+function renderPins(){
+  const pinsEl = document.getElementById('asset-pins');
+  if(!pinsEl) return;
+  const visible = assets.filter(a=>currentFilter==='all'||a.status===currentFilter);
+  pinsEl.innerHTML = visible.map(a=>{
+    const sel = selectedAsset && selectedAsset.id===a.id;
+    const r = sel ? 10 : 7;
+    const pulse = a.status==='enroute'
+      ? `<circle cx="0" cy="0" r="16" fill="none" stroke="${a.pinColor}" stroke-width="1" style="animation:en-pulse 2.2s ease-in-out infinite"/>`
+      : '';
+    return `<g class="asset-pin" onclick="selectAsset('${a.id}')" transform="translate(${a.mapX},${a.mapY})">
+      ${pulse}
+      <circle r="${r+4}" fill="${a.pinColor}" opacity="0.14"/>
+      <circle r="${r}" fill="${a.pinColor}" ${sel?'stroke="#fff" stroke-width="2"':''}/>
+      <text text-anchor="middle" dy="${-(r+6)}" font-family="JetBrains Mono,monospace" font-size="8" fill="${a.pinColor}" font-weight="700">${a.unit}</text>
+      ${a.priority?'<text text-anchor="middle" dy="'+(r+12)+'" font-size="9" fill="#EF4444" font-weight="700">!</text>':''}
+    </g>`;
+  }).join('');
+  // Hide R2-D2 route lines for arrived units
+  ['7701','904','5503'].forEach(id=>{
+    const el = document.getElementById('route-'+id);
+    if(!el) return;
+    const unit = assets.find(a=>a.unit.includes(id));
+    el.style.display = (unit && unit.status==='enroute') ? '' : 'none';
+  });
+}
+
+// ── Asset list ────────────────────────────────────────────────────────────────
+function setFilter(f,el){
+  currentFilter=f;
+  document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderList(); renderPins();
+}
+
+function renderList(){
+  const list = document.getElementById('asset-list');
+  if(!list) return;
+  const visible = assets.filter(a=>currentFilter==='all'||a.status===currentFilter);
+  document.getElementById('asset-count').textContent = visible.length+' unit'+(visible.length!==1?'s':'');
+  const lbl={enroute:'En Route',inshop:'In Shop',complete:'Complete',hold:'On Hold'};
+  const cls={enroute:'sp-enroute',inshop:'sp-inshop',complete:'sp-complete',hold:'sp-hold'};
+  list.innerHTML = visible.map(a=>{
+    const sel = selectedAsset && selectedAsset.id===a.id;
+    const dwell = a.status==='enroute'
+      ? fmtMiles(a.distanceMi)+' out &middot; '+fmtETA((a.distanceMi/a.speedMph)*60)
+      : fmtDwell(a.dwellHrs)+' in yard';
+    return `<div class="asset-row${sel?' selected':''}" onclick="selectAsset('${a.id}')">
+      <div>
+        <div class="asset-unit">${typeIcon(a.type)} ${a.unit}</div>
+        <div class="asset-customer">${typeName(a.type)}</div>
+        <div class="asset-location">${a.shop}</div>
+      </div>
+      <div class="asset-right">
+        <span class="status-pill ${cls[a.status]}">${lbl[a.status]}</span>
+        <div class="asset-dwell">${dwell}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Detail ────────────────────────────────────────────────────────────────────
+function selectAsset(id){
+  selectedAsset = assets.find(a=>a.id===id);
+  if(!selectedAsset) return;
+  renderList(); renderPins();
+  populateDetail(selectedAsset);
+  document.getElementById('detail-overlay').classList.add('visible');
+}
+
+function populateDetail(a){
+  document.getElementById('d-unit').textContent = a.unit;
+  document.getElementById('d-type').textContent = typeIcon(a.type)+' '+typeName(a.type);
+  const slbl={enroute:'En Route -- R2-D2 routing',inshop:'In Shop -- active service',complete:'Complete -- awaiting pickup',hold:'ON HOLD -- action required'};
+  const scol={enroute:'var(--status-enroute)',inshop:'var(--status-inshop)',complete:'var(--status-complete)',hold:'var(--status-hold)'};
+  const sv = document.getElementById('d-status');
+  sv.textContent = slbl[a.status]||a.status;
+  sv.style.color = scol[a.status]||'var(--text)';
+  document.getElementById('d-location').textContent = a.shop+' \u00b7 '+a.shopCity;
+  document.getElementById('d-dwell').textContent = a.status==='enroute'
+    ? fmtMiles(a.distanceMi)+' out \u00b7 ETA '+fmtETA((a.distanceMi/a.speedMph)*60)
+    : fmtDwell(a.dwellHrs);
+  const eta = document.getElementById('d-eta');
+  if(a.status==='complete'){eta.textContent='Ready for pickup';eta.className='detail-val green';}
+  else if(a.status==='hold'){eta.textContent='Blocked -- resolve payment hold';eta.className='detail-val red';}
+  else if(a.status==='enroute'){eta.textContent='ETA '+fmtETA((a.distanceMi/a.speedMph)*60);eta.className='detail-val blue';}
+  else if(a.bookHrs&&a.actualHrs){
+    const rem = Math.max(0,a.bookHrs-a.actualHrs);
+    eta.textContent = rem<0.1?'Finishing now':fmtDwell(rem)+' est. remaining';
+    eta.className='detail-val '+(a.actualHrs>a.bookHrs?'amber':'green');
+  } else {eta.textContent='Awaiting assignment';eta.className='detail-val';}
+  document.getElementById('d-so').textContent = a.soNumber||'--';
+  // BVA
+  const bvaS = document.getElementById('d-bva-section');
+  if(a.bookHrs&&a.actualHrs!==null){
+    bvaS.style.display='';
+    const pct=Math.min(100,(a.actualHrs/a.bookHrs)*100);
+    const over=a.actualHrs>a.bookHrs;
+    document.getElementById('d-bva-fill').style.width=pct+'%';
+    document.getElementById('d-bva-fill').style.background=over?'var(--status-hold)':'var(--status-complete)';
+    document.getElementById('d-bva-vals').textContent=fmtDwell(a.actualHrs)+' / '+fmtDwell(a.bookHrs);
+    document.getElementById('d-bva-vals').style.color=over?'var(--status-hold)':'var(--status-complete)';
+    const varEl=document.getElementById('d-bva-var');
+    varEl.textContent=over?'+'+fmtDwell(a.actualHrs-a.bookHrs)+' over book':fmtDwell(a.bookHrs-a.actualHrs)+' under book';
+    varEl.className='detail-val '+(over?'red':'green');
+  } else {bvaS.style.display='none';}
+  // Payment
+  document.getElementById('d-payment').innerHTML=`
+    <div class="pt-row"><span class="pt-label">Invoice amount</span><span class="pt-val">${fmtMoney(a.payInvoice)}</span></div>
+    <div class="pt-row"><span class="pt-label">Fullbay processing fee</span><span class="pt-val neg">-${fmtMoney(a.payFee)}</span></div>
+    <div class="pt-row"><span class="pt-label">Net deposit to shop</span><span class="pt-val pos">${fmtMoney(a.payNet)}</span></div>
+    <div class="pt-row"><span class="pt-label" style="color:var(--text)">Status</span>
+      <span class="pt-val" style="color:${a.paySettled?'#4DB87A':a.status==='hold'?'#EF4444':'#E8A020'}">${a.payStatus}</span></div>`;
+  // Agents
+  const ad={r2d2:{n:'R2-D2',c:'#38C4F0'},c3po:{n:'C-3PO',c:'#60A5FA'},l337:{n:'L3-37',c:'#34D399'},
+    bb8:{n:'BB-8',c:'#FBBF24'},k2so:{n:'K-2SO',c:'#94A3B8'},lobot:{n:'Lobot',c:'#F472B6'},
+    ig11:{n:'IG-11',c:'#EF4444'},k3po:{n:'K-3PO',c:'#E2E8F0'},chopper:{n:'Chopper',c:'#FB923C'}};
+  document.getElementById('d-agents').innerHTML = Object.entries(a.agentStates).map(([k,s])=>{
+    const d=ad[k]||{n:k,c:'#888'};
+    const done=/(complete|passed|settled|arrived|delivered|notified|released|ready)/.test(s.toLowerCase());
+    const warn=/(overrun|hold|locked|dispute|blocked|escalated)/.test(s.toLowerCase());
+    const icon=warn?'&#9888;':done?'&#10003;':'&#9675;';
+    const icol=warn?'#EF4444':done?'#4DB87A':'#666';
+    return `<div class="agent-status-row">
+      <div class="agent-dot" style="background:${d.c}"></div>
+      <span class="agent-name" style="color:${d.c}">${d.n}</span>
+      <span class="agent-status-text">${s}</span>
+      <span class="agent-check" style="color:${icol}">${icon}</span>
+    </div>`;
+  }).join('');
+  // Yard link
+  document.getElementById('d-yard-link-text').textContent = 'View '+a.unit+' in Yard at '+a.shop;
+  document.getElementById('d-yard-link').href = 'fullbay-yard-view.html';
+}
+
+function closeDetail(){
+  document.getElementById('detail-overlay').classList.remove('visible');
+  selectedAsset = null;
+  renderList(); renderPins();
+}
+
+// ── Header stats ──────────────────────────────────────────────────────────────
+function renderHeaderStats(){
+  const el=document.getElementById('header-stats');
+  if(!el) return;
+  const er=assets.filter(a=>a.status==='enroute').length;
+  const sh=assets.filter(a=>a.status==='inshop').length;
+  const co=assets.filter(a=>a.status==='complete').length;
+  const ho=assets.filter(a=>a.status==='hold').length;
+  el.innerHTML=`
+    <div class="hstat"><span class="hstat-n" style="color:var(--status-enroute)">${er}</span><span class="hstat-l">en route</span></div>
+    <div class="hstat"><span class="hstat-n" style="color:var(--status-inshop)">${sh}</span><span class="hstat-l">in shop</span></div>
+    <div class="hstat"><span class="hstat-n" style="color:var(--status-complete)">${co}</span><span class="hstat-l">complete</span></div>
+    <div class="hstat"><span class="hstat-n" style="color:var(--status-hold)">${ho}</span><span class="hstat-l">on hold</span></div>`;
+}
+
+// ── View toggle ───────────────────────────────────────────────────────────────
+function setView(v){
+  currentView=v;
+  const btnMap=document.getElementById('btn-map');
+  const btnList=document.getElementById('btn-list');
+  if(btnMap) btnMap.classList.toggle('active',v==='map');
+  if(btnList) btnList.classList.toggle('active',v==='list');
+  const mp=document.getElementById('map-panel');
+  const ap=document.getElementById('asset-list-panel');
+  const fp=document.getElementById('event-feed-panel');
+  if(mp) mp.style.display = v==='map'?'':'none';
+  if(ap) ap.style.gridRow = v==='map'?'1/2':'1/3';
+  if(fp) fp.style.display = v==='map'?'':'none';
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+// ── Clock ─────────────────────────────────────────────────────────────────────
+function updateClock(){
+  document.getElementById('clock').textContent=
+    new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit'});
+}
+updateClock(); setInterval(updateClock,1000);
+
+// ── Render all ───────────────────────────────────────────────────────────────
+function renderAll(){
+  renderList(); renderHeaderStats(); renderFeed();
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function(){
+  renderAll();
+  renderPins();
+  updateMC80A();
+});
+</script>
+</body>
+</html>

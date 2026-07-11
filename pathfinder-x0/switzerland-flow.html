@@ -1,1 +1,491 @@
-Switzerland Flow
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Switzerland Hypothesis -- Repair Event Loop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#09090B;--surface:#111114;--surface2:#18181C;
+  --border:rgba(255,255,255,0.07);--border-hi:rgba(255,255,255,0.14);
+  --text:#E4E4E0;--text-mid:#C8C8C4;--text-lo:#888884;
+  --truck:#38C4F0;--agent:#A855F7;--shop:#34D399;
+  --fleet:#FBBF24;--fullbay:#60A5FA;
+  --payment:#F472B6;--enforce:#EF4444;
+  --font-ui:'Inter',system-ui,sans-serif;
+  --font-data:'JetBrains Mono',monospace;
+}
+html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:var(--font-ui);overflow-x:hidden}
+.page{max-width:1280px;margin:0 auto;padding:32px 24px 80px}
+#sys-nav{background:#040506;border-bottom:1px solid rgba(96,165,250,0.18);display:flex;align-items:center;padding:0 24px;height:36px;gap:0;margin:-32px -24px 32px;position:sticky;top:0;z-index:100}
+.sys-logo{font-family:var(--font-data);font-size:11px;font-weight:700;color:var(--fullbay);letter-spacing:.12em;text-transform:uppercase;margin-right:20px}
+.sys-logo span{color:rgba(96,165,250,0.4);font-weight:400}
+.nav-link{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:rgba(255,255,255,0.25);padding:0 14px;height:36px;display:flex;align-items:center;border-bottom:2px solid transparent;transition:all .15s;text-decoration:none;font-family:var(--font-data)}
+.nav-link:hover{color:rgba(255,255,255,0.55)}
+.nav-link.active{color:var(--fullbay);border-bottom-color:var(--fullbay)}
+.nav-divider{width:1px;height:18px;background:rgba(255,255,255,0.07);margin:0 4px}
+.prototype-pill{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#5A3E10;background:#3A2708;border:1px solid #6A4A12;border-radius:4px;padding:2px 7px;font-family:var(--font-data);margin-left:auto}
+.human-banner{background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.3);border-radius:8px;padding:12px 18px;margin-bottom:28px;display:flex;align-items:flex-start;gap:12px}
+.human-banner-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.human-banner-text{font-size:13px;color:var(--text-mid);line-height:1.6}
+.human-banner-text strong{color:#FBBF24;font-weight:600}
+.speed-toggle{display:flex;align-items:center;gap:8px;margin-left:auto;flex-shrink:0}
+.speed-btn{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:5px;color:var(--text-lo);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;cursor:pointer;font-family:var(--font-data);transition:all .15s;white-space:nowrap}
+.speed-btn:hover{color:var(--text-mid);border-color:rgba(255,255,255,0.2)}
+.speed-btn.active{color:#FBBF24;border-color:rgba(251,191,36,0.4);background:rgba(251,191,36,0.08)}
+.page-header{margin-bottom:36px;border-bottom:1px solid var(--border);padding-bottom:24px}
+.eyebrow{font-family:var(--font-data);font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--fullbay);margin-bottom:10px}
+.page-title{font-size:30px;font-weight:700;line-height:1.15;letter-spacing:-.02em;margin-bottom:8px}
+.page-title em{font-style:normal;color:var(--fullbay)}
+.page-sub{font-size:14px;color:var(--text-mid);line-height:1.6;max-width:680px}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:32px;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:8px}
+.legend-item{display:flex;align-items:center;gap:7px;font-size:11px;color:#E4E4E0;font-family:var(--font-data)}
+.legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.phase-bar{display:grid;margin-bottom:8px;gap:0}
+.phase{padding:6px 10px;font-family:var(--font-data);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;border-right:1px solid var(--border);text-align:center;line-height:1.3}
+.phase:last-child{border-right:none}
+.phase.p0{color:#A855F7;background:rgba(168,85,247,.1)}
+.phase.p1{color:#60A5FA;background:rgba(96,165,250,.12)}
+.phase.p2{color:#38C4F0;background:rgba(56,196,240,.08)}
+.phase.p3{color:#60A5FA;background:rgba(96,165,250,.18)}
+.phase.p4{color:#34D399;background:rgba(52,211,153,.08)}
+.phase.p5{color:#FBBF24;background:rgba(251,191,36,.08)}
+.swimlane-wrap{display:grid;grid-template-columns:80px 1fr;gap:0;position:relative}
+.track-labels{display:flex;flex-direction:column;gap:0;border-right:1px solid var(--border)}
+.track-label{display:flex;align-items:center;justify-content:flex-end;padding:0 10px 0 0;font-family:var(--font-data);font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid var(--border)}
+.track-label:last-child{border-bottom:none}
+.track-label.t-truck{color:var(--truck)}.track-label.t-agent{color:var(--agent)}
+.track-label.t-fullbay{color:var(--fullbay)}.track-label.t-shop{color:var(--shop)}
+.track-label.t-fleet{color:var(--fleet)}.track-label.t-payment{color:var(--payment)}
+.track-label.t-enforce{color:var(--enforce)}
+.flow-canvas{position:relative;overflow-x:auto}
+.flow-inner{min-width:1100px;display:grid;grid-template-rows:repeat(7,68px);position:relative}
+.track-row{border-bottom:1px solid var(--border);position:relative;display:flex;align-items:center}
+.track-row:last-child{border-bottom:none}
+.track-row.t-truck{background:rgba(56,196,240,.04)}.track-row.t-agent{background:rgba(168,85,247,.05)}
+.track-row.t-fullbay{background:rgba(96,165,250,.06)}.track-row.t-shop{background:rgba(52,211,153,.04)}
+.track-row.t-fleet{background:rgba(251,191,36,.04)}.track-row.t-payment{background:rgba(244,114,182,.04)}
+.track-row.t-enforce{background:rgba(239,68,68,.04)}
+.phase-divider{position:absolute;top:0;bottom:0;width:1px;background:rgba(255,255,255,0.06);z-index:4;pointer-events:none}
+.node{position:absolute;transform:translateY(-50%);top:50%;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;z-index:10}
+.node-body{width:68px;height:42px;border-radius:8px;border:1.5px solid;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:transform .12s,box-shadow .12s;gap:2px;position:relative}
+.node:hover .node-body{transform:scale(1.08)}
+.node-icon{font-size:14px;line-height:1}
+.node-label{font-family:var(--font-data);font-size:7px;font-weight:700;text-align:center;line-height:1.2;letter-spacing:.03em;text-transform:uppercase}
+.node-agent-name{font-family:var(--font-data);font-size:7px;opacity:.6;text-align:center;letter-spacing:.03em;margin-top:1px}
+.node.truck .node-body{background:rgba(56,196,240,.15);border-color:rgba(56,196,240,.55);color:var(--truck)}
+.node.agent .node-body{background:rgba(168,85,247,.15);border-color:rgba(168,85,247,.55);color:var(--agent)}
+.node.fullbay .node-body{background:rgba(96,165,250,.15);border-color:rgba(96,165,250,.55);color:var(--fullbay)}
+.node.shop .node-body{background:rgba(52,211,153,.15);border-color:rgba(52,211,153,.55);color:var(--shop)}
+.node.fleet .node-body{background:rgba(251,191,36,.15);border-color:rgba(251,191,36,.55);color:var(--fleet)}
+.node.payment .node-body{background:rgba(244,114,182,.15);border-color:rgba(244,114,182,.55);color:var(--payment)}
+.node.enforce .node-body{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.55);color:var(--enforce)}
+.node.handshake .node-body{background:rgba(96,165,250,.28);border-color:rgba(96,165,250,.9);color:#EFF6FF;box-shadow:0 0 28px rgba(96,165,250,.5)}
+.node.active .node-body{transform:scale(1.12);box-shadow:0 0 24px rgba(255,255,255,.15)}
+.connector-svg{position:absolute;inset:0;pointer-events:none;z-index:5}
+.detail-panel{margin-top:20px;background:var(--surface);border:1px solid var(--border-hi);border-radius:10px;overflow:hidden;min-height:100px}
+.detail-inner{padding:18px 22px}
+.detail-empty{padding:22px;text-align:center;font-size:13px;color:#888884;font-family:var(--font-data)}
+.detail-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
+.detail-title{font-size:15px;font-weight:700;line-height:1.2}
+.detail-track{font-size:10px;font-family:var(--font-data);font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:2px 8px;border-radius:99px;border:1px solid;margin-top:4px;display:inline-block}
+.detail-phase-tag{font-size:9px;font-family:var(--font-data);font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:2px 7px;border-radius:4px;border:1px solid;margin-top:4px;margin-left:6px;display:inline-block;opacity:.7}
+.detail-desc{font-size:13px;color:var(--text-mid);line-height:1.7;margin-bottom:12px}
+.detail-actors{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.actor-chip{font-size:11px;font-family:var(--font-data);padding:3px 9px;border-radius:99px;border:1px solid rgba(255,255,255,.2);color:#E4E4E0;background:rgba(255,255,255,.07)}
+.detail-note{font-size:11px;color:#A8A8A4;font-style:italic;border-top:1px solid var(--border);padding-top:10px;line-height:1.5}
+.section-label{font-family:var(--font-data);font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:#C8C8C4;margin-bottom:16px;margin-top:40px;display:flex;align-items:center;gap:10px}
+.section-label::after{content:'';flex:1;height:1px;background:var(--border)}
+.oq-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:16px}
+.oq-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px}
+.oq-n{font-family:var(--font-data);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#888884;margin-bottom:6px}
+.oq-q{font-size:13px;color:var(--text);line-height:1.6;margin-bottom:8px}
+.oq-tag{font-size:10px;font-family:var(--font-data);padding:2px 7px;border-radius:4px;border:1px solid;display:inline-block}
+.oq-tag.speculative{color:#C084FC;border-color:rgba(192,132,252,.45);background:rgba(192,132,252,.1)}
+.oq-tag.research{color:#34D399;border-color:rgba(52,211,153,.45);background:rgba(52,211,153,.1)}
+.oq-tag.product{color:#60A5FA;border-color:rgba(96,165,250,.45);background:rgba(96,165,250,.1)}
+.page-footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.footer-note{font-size:11px;color:#E4E4E0;font-family:var(--font-data)}
+.proto-tag{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#FBBF24;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.4);border-radius:4px;padding:2px 8px;font-family:var(--font-data)}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(14,16,20,0.96);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 16px;font-size:12px;color:#C8C8C4;z-index:500;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap;font-family:var(--font-data)}
+#toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="page">
+<nav id="sys-nav">
+  <span class="sys-logo">Fullbay <span>X.0</span></span>
+  <a class="nav-link" href="fullbay-yard-view.html">Yard View</a>
+  <div class="nav-divider"></div>
+  <a class="nav-link" href="fullbay-fleet-manager.html">Fleet Manager</a>
+  <div class="nav-divider"></div>
+  <div class="nav-link active">Flow Map</div>
+  <span class="prototype-pill">Pathfinder X.0</span>
+</nav>
+<div class="human-banner">
+  <div class="human-banner-icon">&#9888;</div>
+  <div class="human-banner-text">
+    <strong>You are watching a human-speed version of this process.</strong>
+    In practice, everything from fault detection through bay assignment completes in under one second.
+    The sequence below is slowed down so you can see what the agents are actually doing.
+    Toggle to see how fast this actually runs.
+  </div>
+  <div class="speed-toggle">
+    <button class="speed-btn active" id="btn-human" onclick="setSpeed('human')">Human speed</button>
+    <button class="speed-btn" id="btn-real" onclick="setSpeed('real')">Real time</button>
+  </div>
+</div>
+<div class="page-header">
+  <div class="eyebrow">Fullbay Pathfinder X.0 &middot; Think Week 2026 &middot; Internal &mdash; Confidential</div>
+  <h1 class="page-title">The <em>Switzerland</em> Hypothesis<br>Repair Event Loop</h1>
+  <p class="page-sub">How Fullbay becomes the neutral protocol layer between an autonomous asset and a repair facility. The intelligence is front-loaded &mdash; by the time a truck arrives, the work has already begun. Click any node to explore.</p>
+</div>
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:var(--truck)"></div>The Asset (Truck)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--agent)"></div>AI Agents</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--fullbay)"></div>Fullbay Protocol</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--shop)"></div>Repair Shop</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--fleet)"></div>Fleet Manager</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--payment)"></div>Lobot (Payment)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--enforce)"></div>IG-11 (Enforcement)</div>
+</div>
+<div class="phase-bar" id="phase-bar" style="grid-template-columns:repeat(6,1fr)">
+  <div class="phase p0">&#9312; Fault detected<br><span style="opacity:.6;font-size:8px">Truck at origin</span></div>
+  <div class="phase p1">&#9313; Pre-negotiation<br><span style="opacity:.6;font-size:8px">Before truck moves</span></div>
+  <div class="phase p2">&#9314; Transit<br><span style="opacity:.6;font-size:8px">En route</span></div>
+  <div class="phase p3">&#9315; Arrival confirmation<br><span style="opacity:.6;font-size:8px">Geofence = ACK</span></div>
+  <div class="phase p4">&#9316; Service execution<br><span style="opacity:.6;font-size:8px">L3-37 monitoring</span></div>
+  <div class="phase p5">&#9317; Departure<br><span style="opacity:.6;font-size:8px">Loop closes</span></div>
+</div>
+<div class="swimlane-wrap">
+  <div class="track-labels" id="track-labels">
+    <div class="track-label t-truck"   style="height:68px">Truck</div>
+    <div class="track-label t-agent"   style="height:68px">Agents</div>
+    <div class="track-label t-fullbay" style="height:68px">Fullbay</div>
+    <div class="track-label t-shop"    style="height:68px">Shop</div>
+    <div class="track-label t-fleet"   style="height:68px">Fleet Mgr</div>
+    <div class="track-label t-payment" style="height:68px">Lobot</div>
+    <div class="track-label t-enforce" style="height:68px">IG-11</div>
+  </div>
+  <div class="flow-canvas">
+    <div class="flow-inner" id="flow-inner">
+      <div class="track-row t-truck"></div>
+      <div class="track-row t-agent"></div>
+      <div class="track-row t-fullbay"></div>
+      <div class="track-row t-shop"></div>
+      <div class="track-row t-fleet"></div>
+      <div class="track-row t-payment"></div>
+      <div class="track-row t-enforce"></div>
+      <svg class="connector-svg" id="connector-svg"></svg>
+    </div>
+  </div>
+</div>
+<div class="detail-panel" id="detail-panel">
+  <div class="detail-empty">&#8592; Tap any node to see what is happening at that moment</div>
+</div>
+<div class="section-label" style="margin-top:48px">Agent roster &mdash; the droids running the loop</div>
+<div class="oq-grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
+  <div class="oq-card"><div class="oq-n" style="color:#60A5FA">C-3PO &middot; Protocol Agent</div><div class="oq-q">Assigned to each truck at fleet acquisition. Initiates and manages the handshake. The loop starts the moment C-3PO detects a fault.</div><span class="oq-tag product">Always on</span></div>
+  <div class="oq-card"><div class="oq-n" style="color:#38C4F0">R2-D2 &middot; Routing Agent</div><div class="oq-q">GPS/ArcGIS-integrated. Finds the right shop for this fault type -- not just the nearest one. Cross-references bay availability, tech certification, parts inventory.</div><span class="oq-tag product">Pre-arrival</span></div>
+  <div class="oq-card"><div class="oq-n" style="color:#A855F7">BB-8 &middot; Parts Agent</div><div class="oq-q">Checks Unit Pack first. Pack installed: verified parts list, high confidence. No pack: catalog-based with confidence scoring. Auto-orders top match, flags alternatives.</div><span class="oq-tag product">Service loop</span></div>
+  <div class="oq-card"><div class="oq-n" style="color:#34D399">L3-37 &middot; Repair Monitoring</div><div class="oq-q">The most visible agent. Tracks book time vs. actual in real time. If the job finishes early, the fleet manager knows before anyone calls.</div><span class="oq-tag speculative">Most human-facing</span></div>
+  <div class="oq-card"><div class="oq-n" style="color:#94A3B8">K-2SO &middot; Verification</div><div class="oq-q">Independent post-repair asset self-check. Both K-2SO and shop QA must pass before the release chain fires. Blunt, accurate, not negotiable.</div><span class="oq-tag product">Departure gate</span></div>
+  <div class="oq-card"><div class="oq-n" style="color:#F472B6">Lobot &middot; Payment</div><div class="oq-q">Front-loads the entire payment cycle to fault detection. Checks payment history before the shop agrees to take the unit. Settlement is instantaneous at departure.</div><span class="oq-tag product">Front-loaded</span></div>
+  <div class="oq-card"><div class="oq-n" style="color:#EF4444">IG-11 &middot; Enforcement</div><div class="oq-q">Physical lock at arrival. Requires dual authorization from K-2SO and Lobot to release. Does not negotiate.</div><span class="oq-tag product">Dual-key release</span></div>
+  <div class="oq-card"><div class="oq-n" style="color:#FBBF24">Chopper &middot; Fleet Disposition</div><div class="oq-q">Notifies the fleet manager at fault detection, not at arrival. Keeps the view current at every state change. Grumpy, reliable, never misses an update.</div><span class="oq-tag product">Always on</span></div>
+  <div class="oq-card"><div class="oq-n" style="color:#E2E8F0">K-3PO &middot; Bay Scheduling</div><div class="oq-q">Confirms bay assignment during pre-negotiation before the truck moves. Morning chaos eliminated before anyone arrives.</div><span class="oq-tag product">Pre-arrival</span></div>
+  <div class="oq-card"><div class="oq-n" style="color:#A78BFA">MC80A &middot; Orchestrator</div><div class="oq-q">Watches all agent states simultaneously. Detects conflicts. Intervenes only when the system is about to break.</div><span class="oq-tag product">Command layer</span></div>
+</div>
+<div class="section-label" style="margin-top:48px">Open questions + future research</div>
+<div class="oq-grid">
+  <div class="oq-card"><div class="oq-n">OQ-01</div><div class="oq-q">Can L3-37 communicate directly with the technician in real time? Smart glasses, voice interface, tablet?</div><span class="oq-tag speculative">Speculative</span></div>
+  <div class="oq-card"><div class="oq-n">OQ-02</div><div class="oq-q">Do Unit Pack repair procedures become audible step-by-step instructions for the tech, while L3-37 monitors completion of each step?</div><span class="oq-tag speculative">Speculative</span></div>
+  <div class="oq-card"><div class="oq-n">OQ-03</div><div class="oq-q">What is the trust model when the truck's OEM agent and Fullbay's protocol disagree about a repair authorization?</div><span class="oq-tag product">Product</span></div>
+  <div class="oq-card"><div class="oq-n">OQ-04</div><div class="oq-q">OEMs are building walled garden repair AI on their own fleet data. At what point does their RAG dataset break down on cross-make diagnostics, and does that create the opening for Fullbay?</div><span class="oq-tag research">Research</span></div>
+  <div class="oq-card"><div class="oq-n">OQ-05</div><div class="oq-q">Shops with commissioned service writers may see labor elevation, not displacement. The AI removes intake bottlenecks so writers can write more work. How does this split by shop type?</div><span class="oq-tag research">Research</span></div>
+  <div class="oq-card"><div class="oq-n">OQ-06</div><div class="oq-q">WABCO, Bendix, and Stemco already detect fault conditions on trailers but cannot route units to capable shops. Is this the natural pilot partnership for pre-AV Switzerland?</div><span class="oq-tag research">Research</span></div>
+  <div class="oq-card"><div class="oq-n">OQ-07</div><div class="oq-q">BB-8's confidence scoring depends on Unit Pack coverage. What is the minimum pack library before auto-ordering is more helpful than harmful?</div><span class="oq-tag product">Product</span></div>
+  <div class="oq-card"><div class="oq-n">OQ-08</div><div class="oq-q">Field service variant: unit breaks down in the field, calls for a mobile tech rather than routing to a shop. Same protocol, different physical direction. How does the flow change?</div><span class="oq-tag research">Research</span></div>
+</div>
+<div class="page-footer">
+  <span class="footer-note">Fullbay &middot; PEO Think Week &middot; August 31 &ndash; September 4, 2026 &middot; Not for external distribution</span>
+  <span class="proto-tag">Pathfinder X.0</span>
+</div>
+</div>
+<script>
+var TRACK_H = 68;
+var TRACK_COUNT = 7;
+var TOTAL_H = TRACK_H * TRACK_COUNT;
+function trackCY(t){ return t * TRACK_H + TRACK_H/2; }
+
+var speedMode = 'human';
+function setSpeed(mode){
+  speedMode = mode;
+  document.getElementById('btn-human').classList.toggle('active', mode==='human');
+  document.getElementById('btn-real').classList.toggle('active', mode==='real');
+  showToast(mode==='real'
+    ? 'Real time: the entire 6-phase sequence completes in under 1 second.'
+    : 'Human speed: slowed down so you can follow what the agents are doing.');
+}
+
+var NODES = [
+  {id:'fault',track:0,x:4,cls:'truck',icon:'&#9888;',label:'Fault\nDetected',phase:0,agentName:'',
+    title:'Fault Detected -- The Loop Begins',trackName:'The Asset',
+    desc:'Onboard diagnostics fire. The truck knows something is wrong. In the autonomous world, there is no driver to notice. C-3PO receives the fault signal and the entire pre-negotiation sequence begins. The truck has not moved yet.',
+    actors:['Onboard OBD-II','Telematics module','C-3PO (Protocol Agent)'],
+    note:'This is where the loop actually starts -- not at the shop door. Everything that follows happens before the truck moves a mile.'},
+  {id:'c3po-assess',track:1,x:9,cls:'agent',icon:'&#10022;',label:'C-3PO\nAssesses',phase:0,agentName:'C-3PO',
+    title:'C-3PO -- Protocol Agent Assesses Severity',trackName:'AI Agent / C-3PO',
+    desc:'C-3PO cross-references the fault against repair history and severity models. It decides: can this wait, or does it need immediate attention? C-3PO then queries the Fullbay network for candidate shops that can handle this fault type.',
+    actors:['C-3PO (Protocol Agent)','Fault severity model','Repair history RAG','Fleet priority rules'],
+    note:'C-3PO is the truck\'s permanent assigned agent. Every communication between the asset and the outside world routes through C-3PO first.'},
+  {id:'lobot-history',track:5,x:9,cls:'payment',icon:'&#10022;',label:'Lobot\nCredit Check',phase:0,agentName:'Lobot',
+    title:'Lobot -- Payment History Check at Fault Detection',trackName:'Payment Agent / Lobot',
+    desc:'The moment C-3PO flags a fault, Lobot begins the payment cycle. Payment method validation, ACH fund verification, and payment history check. Does this fleet have outstanding balances? Shops receive this before they agree to take the unit.',
+    actors:['Lobot (Payment Agent)','Payment history database','Fleet account standing','ACH pre-verification'],
+    note:'A shop user said: they already know at that point -- these people have not paid their bills in 6 months. Lobot makes that check automatic, before the truck moves.'},
+  {id:'r2d2-route',track:1,x:20,cls:'agent',icon:'&#128205;',label:'R2-D2\nLocates Shop',phase:1,agentName:'R2-D2',
+    title:'R2-D2 -- Routing Agent Finds the Right Shop',trackName:'AI Agent / R2-D2',
+    desc:'R2-D2 queries the Fullbay shop network via GPS/ArcGIS. Not just the nearest shop -- the right shop: correct fault certification, available bay, parts in stock, clean payment history. The truck has still not moved.',
+    actors:['R2-D2 (Routing Agent)','ArcGIS / Google Maps API','Fullbay shop network','Bay availability','Parts inventory','Tech certification match'],
+    note:'Every shop on the Fullbay network increases the value of the routing decision. Network ubiquity is the structural advantage.'},
+  {id:'fullbay-query',track:2,x:20,cls:'fullbay',icon:'&#129309;',label:'Fullbay\nQuery',phase:1,agentName:'C-3PO',
+    title:'Fullbay Protocol -- Pre-Arrival Packet Received',trackName:'Fullbay Protocol',
+    desc:'Fullbay receives the pre-arrival packet: unit identity, fault data, repair history, payment pre-authorization status. The shop evaluates capacity and responds with acceptance or redirect. This is the SYN-ACK of the Switzerland handshake.',
+    actors:['Fullbay protocol layer','Pre-arrival packet','Shop capacity check','Acceptance / redirect logic'],
+    note:'The handshake is a three-part sequence: SYN at fault detection, SYN-ACK here when the shop accepts, ACK at geofence. Most people only see the ACK and think that is where it starts.'},
+  {id:'shop-accepts',track:3,x:25,cls:'shop',icon:'&#10003;',label:'Shop\nAccepts',phase:1,agentName:'',
+    title:'Shop Accepts -- Work Begins Before Truck Moves',trackName:'Repair Shop',
+    desc:'The shop accepts the pre-arrival packet. At this moment -- before the truck has left its origin -- the shop has the fault diagnosis, repair history, draft SO, reserved bay, parts staged, tech assigned, and payment pre-authorized.',
+    actors:['Shop Fullbay instance','Draft SO generation','Bay reservation','Tech assignment','Parts staging trigger'],
+    note:'By the time the truck arrives, the shop is ready. Intake is not an event that happens at the door. It is a process that completes before the truck moves.'},
+  {id:'bb8-parts',track:1,x:25,cls:'agent',icon:'&#10022;',label:'BB-8\nParts Check',phase:1,agentName:'BB-8',
+    title:'BB-8 -- Parts Agent: Unit Pack First',trackName:'AI Agent / BB-8',
+    desc:'BB-8 checks for a Unit Pack for this vehicle type. Pack installed: pulls the verified parts list, high-confidence recommendations. No pack: catalog-based with confidence scoring. Parts staged or ordered before the truck arrives.',
+    actors:['BB-8 (Parts Agent)','Unit Pack library check','Parts catalog fallback','Confidence scoring','Distributor network','Shop inventory'],
+    note:'Unit Pack installed: pack-verified recommendation. No Unit Pack: confidence-rated catalog estimate with a prompt to acquire the pack. Same interface, different data quality.'},
+  {id:'k3po-bay',track:1,x:30,cls:'agent',icon:'&#10022;',label:'K-3PO\nBay Reserved',phase:1,agentName:'K-3PO',
+    title:'K-3PO -- Bay Scheduling: Reserved Before Arrival',trackName:'AI Agent / K-3PO',
+    desc:'K-3PO sequences the incoming unit against current bay occupancy and all other scheduled arrivals. Bay assignment is confirmed before the truck leaves its origin. Morning chaos eliminated before anyone arrives.',
+    actors:['K-3PO (Bay Scheduling Agent)','Bay occupancy model','Tech schedule','Estimated arrival time','Conflict detection'],
+    note:'A CAB member described morning chaos: a lot of times in the mornings it is chaos to get the right vehicles in the right bays. K-3PO resolves this before the first truck of the day arrives.'},
+  {id:'chopper-alert',track:4,x:20,cls:'fleet',icon:'&#128276;',label:'Chopper\nAlerts Fleet',phase:1,agentName:'Chopper',
+    title:'Chopper -- Fleet Manager Notified at Fault Detection',trackName:'Fleet Manager / Chopper',
+    desc:'The fleet manager is notified the moment C-3PO detects the fault and R2-D2 identifies a shop. Not when the truck arrives. At fault detection. They see: unit, fault, shop selected, ETA, payment pre-auth status.',
+    actors:['Chopper (Fleet Disposition Agent)','Fleet manager portal','Push notification','Override controls'],
+    note:'Chopper runs continuously. The fleet manager never has to call the shop. Chopper tells them before they think to ask.'},
+  {id:'r2d2-transit',track:1,x:42,cls:'agent',icon:'&#128205;',label:'R2-D2\nRouting Live',phase:2,agentName:'R2-D2',
+    title:'R2-D2 -- Live GPS Routing En Route',trackName:'AI Agent / R2-D2',
+    desc:'R2-D2 navigates the unit to the confirmed shop via live GPS. The fleet manager sees the unit moving on the map. The shop sees an approaching pin in the En Route lane, distance counting down.',
+    actors:['R2-D2 (Routing Agent)','GPS live routing','ArcGIS / Google Maps','Fleet manager map','Yard View En Route lane'],
+    note:'The En Route lane in the Yard View exists because of this phase. The shop is not waiting passively -- they are watching the unit approach with all preparation already complete.'},
+  {id:'lobot-ach',track:5,x:42,cls:'payment',icon:'&#128179;',label:'Lobot\nACH Running',phase:2,agentName:'Lobot',
+    title:'Lobot -- ACH Verification Runs During Transit',trackName:'Payment Agent / Lobot',
+    desc:'While the truck is en route, Lobot is running the full ACH verification cycle. By the time the truck arrives, funds are confirmed and payment is staged. Settlement will be instantaneous at departure.',
+    actors:['Lobot (Payment Agent)','ACH verification system','Fund confirmation','Payment staging'],
+    note:'Front-loading the payment cycle to fault detection means departure is not delayed by payment processing. The truck leaves faster. The bay clears faster.'},
+  {id:'chopper-eta',track:4,x:42,cls:'fleet',icon:'&#128202;',label:'Chopper\nETA Live',phase:2,agentName:'Chopper',
+    title:'Chopper -- Live ETA Updates to Fleet Manager',trackName:'Fleet Manager / Chopper',
+    desc:'Chopper updates the fleet manager with live ETA as R2-D2 routes the unit. No phone calls, no GPS app switching, no manual calculation.',
+    actors:['Chopper (Fleet Disposition Agent)','R2-D2 ETA feed','Fleet manager map view'],
+    note:'A fleet service operator described spending 3 minutes per call just to answer when the tech would arrive. Chopper eliminates all three steps.'},
+  {id:'geofence',track:0,x:56,cls:'truck',icon:'&#128225;',label:'Geofence\nACK',phase:3,agentName:'',
+    title:'Geofence Crossed -- This Is the ACK, Not the Start',trackName:'The Asset',
+    desc:'The truck enters the shop geofence. This is not where the process begins -- it is where the pre-phase concludes. The geofence crossing is physical confirmation: identity verified, work order confirmed, bay confirmed, payment staged.',
+    actors:['Shop geofence','Truck transponder','C-3PO identity verification'],
+    note:'Geofence = ACK. SYN was fault detection. SYN-ACK was shop acceptance. ACK is this moment. The connection was established long before the physical arrival.'},
+  {id:'handshake',track:2,x:62,cls:'handshake',icon:'&#129309;',label:'Fullbay\nHandshake',phase:3,agentName:'C-3PO',
+    title:'The Handshake -- Switzerland in Action',trackName:'Fullbay Protocol / C-3PO',
+    desc:'Fullbay confirms identity against the pre-arrival packet. Draft SO is finalized. Unit drops into the Inbound lane of the Yard View automatically. The shop sees it appear. The fleet manager sees disposition change. C-3PO signals IG-11 and Lobot simultaneously.',
+    actors:['C-3PO (Protocol Agent)','Fullbay protocol layer','Identity verification','SO finalization','Yard View Inbound trigger'],
+    note:'Fullbay is not the truck\'s company and not the shop\'s company. It is the neutral protocol they both agreed to speak. Like TCP/IP: nobody owns it, everybody uses it, value comes from ubiquity.'},
+  {id:'ig11-lock',track:6,x:62,cls:'enforce',icon:'&#128274;',label:'IG-11\nLocks Unit',phase:3,agentName:'IG-11',
+    title:'IG-11 -- Physical Lock: The Only Manual Step',trackName:'Physical Enforcement / IG-11',
+    desc:'At handshake confirmation, IG-11 triggers the physical lock sequence: wheel lock, axle chain, glad hand lock. The tech physically secures the unit. This is the only thing a human must do manually when an autonomous unit arrives.',
+    actors:['IG-11 (Physical Enforcement Agent)','Tech (physical lock execution)','Wheel lock','Axle chain','Glad hand lock'],
+    note:'IG-11 requires dual authorization to release: K-2SO confirms repair complete, Lobot confirms payment cleared. Neither alone is sufficient.'},
+  {id:'yard-inbound',track:3,x:62,cls:'shop',icon:'&#128665;',label:'Unit in\nYard View',phase:3,agentName:'',
+    title:'Unit Appears in Yard View -- Inbound Lane',trackName:'Repair Shop',
+    desc:'The Yard View registers the unit in the Inbound lane simultaneously with the handshake. Draft SO attached, parts pre-staged by BB-8, IG-11 lock status shown, K-3PO bay confirmed. The intake role has shifted: the shop confirms rather than creates.',
+    actors:['Yard View','Shop dispatch','IG-11 lock status','BB-8 parts pre-stage','K-3PO bay display'],
+    note:'The Yard View is the human observation layer for a process that is already running agentically.'},
+  {id:'fleet-inbound',track:4,x:62,cls:'fleet',icon:'&#10004;',label:'Disposition\nUpdates',phase:3,agentName:'Chopper',
+    title:'Chopper -- Fleet Manager Sees Arrival',trackName:'Fleet Manager / Chopper',
+    desc:'Chopper updates the fleet view simultaneously with the handshake. Unit status changes from En Route to In Shop. Check-in time, fault code, Lobot payment status, K-3PO bay, estimated completion from L3-37.',
+    actors:['Chopper (Fleet Disposition Agent)','Fleet manager portal','Real-time sync'],
+    note:'Two views, one event. The shop sees an Inbound truck. The fleet manager sees an asset in service with payment already in motion.'},
+  {id:'tech-assign',track:3,x:72,cls:'shop',icon:'&#128295;',label:'Tech\nAssigned',phase:4,agentName:'',
+    title:'Tech Assigned -- Work Begins',trackName:'Repair Shop',
+    desc:'The shop assigns a tech based on certification match and workload. The tech receives the unit packet from L3-37: fault codes, repair history, step-by-step guidance from the Unit Pack if installed, parts ETA from BB-8.',
+    actors:['Tech scheduling','Certification matching','L3-37 unit packet delivery','Unit Pack instructions (if installed)','BB-8 parts ETA'],
+    note:'Open question: does L3-37 communicate directly with the tech via smart glasses or voice? This is the most interesting design space in the loop.'},
+  {id:'l337',track:1,x:78,cls:'agent',icon:'&#128065;',label:'L3-37\nMonitors',phase:4,agentName:'L3-37',
+    title:'L3-37 -- Live Book vs. Actual',trackName:'AI Agent / L3-37',
+    desc:'L3-37 tracks book time vs. actual in real time. If a job booked for 3 hours takes 2, the fleet manager knows at the 2-hour mark. If a job runs over, L3-37 flags it and Chopper updates the fleet.',
+    actors:['L3-37 (Repair Monitoring Agent)','Book time vs. actual timer','Diagnostic live feed','Fleet manager update','Anomaly detection'],
+    note:'This solves the book vs. actual problem fleet operators have had with independent shops for decades. Honest labor time, by default, for every Fullbay shop.'},
+  {id:'qa',track:3,x:84,cls:'shop',icon:'&#10003;',label:'QA\nComplete',phase:4,agentName:'',
+    title:'Tech Signs Off -- QA Complete',trackName:'Repair Shop',
+    desc:'Tech marks work complete. Shop QA runs. L3-37 logs final actual time. K-2SO receives the signal to begin its independent verification pass.',
+    actors:['Tech sign-off','QA checklist','L3-37 final time log','K-2SO trigger'],
+    note:'Shop QA and asset self-verification are independent. Both must pass before IG-11 will release.'},
+  {id:'k2so',track:0,x:88,cls:'truck',icon:'&#128269;',label:'K-2SO\nVerifies',phase:5,agentName:'K-2SO',
+    title:'K-2SO -- Independent Asset Verification',trackName:'The Asset / K-2SO',
+    desc:'K-2SO runs the post-repair verification pass: fault codes cleared, sensors normal, repair logged. Independent of shop QA. K-2SO sends dual release authorization to IG-11 and Lobot simultaneously.',
+    actors:['K-2SO (Verification Agent)','Onboard OBD-II','Post-repair diagnostic scan','Fault code clearance'],
+    note:'If K-2SO says no, the truck stays. Both shop QA and K-2SO must confirm before departure is authorized.'},
+  {id:'lobot-settle',track:5,x:88,cls:'payment',icon:'&#128184;',label:'Lobot\nSettles',phase:5,agentName:'Lobot',
+    title:'Lobot -- Instant Settlement',trackName:'Payment Agent / Lobot',
+    desc:'Because Lobot front-loaded the payment cycle at fault detection, settlement is now instantaneous. Pre-auth converts to capture. Invoice, Fullbay fee, net deposit -- transmitted simultaneously. Receipts land before the wheels move.',
+    actors:['Lobot (Payment Agent)','Pre-auth capture','Invoice calculation','Fee deduction','Net deposit','Remittance delivery'],
+    note:'Transparent breakdown: invoice total, Fullbay fee, net deposit, timestamp. Both parties receive this simultaneously. No net-30. No chargeback call.'},
+  {id:'ig11-release',track:6,x:91,cls:'enforce',icon:'&#128275;',label:'IG-11\nReleases',phase:5,agentName:'IG-11',
+    title:'IG-11 -- Dual Authorization: Unit Released',trackName:'Physical Enforcement / IG-11',
+    desc:'IG-11 receives both signals: K-2SO confirms repair complete, Lobot confirms payment settled. Only then does IG-11 authorize physical release. The tech removes the locks.',
+    actors:['IG-11 (Physical Enforcement Agent)','K-2SO authorization','Lobot payment clearance','Tech (lock removal)','Release audit log'],
+    note:'K-2SO alone is not enough -- payment must clear. Lobot alone is not enough -- repair must be verified. Dual-key architecture.'},
+  {id:'departure',track:0,x:94,cls:'truck',icon:'&#128665;',label:'Unit\nDeparts',phase:5,agentName:'',
+    title:'Unit Departs -- Documents Already Delivered',trackName:'The Asset',
+    desc:'The unit clears the geofence. Invoices, receipts, and reports are already in inboxes -- Lobot sent them before the wheels moved. Chopper updates the fleet view. R2-D2 resumes routing.',
+    actors:['Geofence exit','Chopper disposition update','R2-D2 route resumption','Yard View clearance'],
+    note:'Departure is not the trigger -- it is the confirmation. Every downstream action was already complete.'},
+  {id:'fleet-close',track:4,x:94,cls:'fleet',icon:'&#128202;',label:'Loop\nCloses',phase:5,agentName:'Chopper',
+    title:'Chopper -- Fleet View Loop Closed',trackName:'Fleet Manager / Chopper',
+    desc:'The fleet manager sees the complete event log: fault detected, shop negotiated before truck moved, arrived, repaired, L3-37 actual vs. book, verified, settled with full breakdown, released, back on route. All without a single human-initiated contact.',
+    actors:['Chopper (Fleet Disposition Agent)','Complete event log','Cost breakdown','L3-37 actual vs. book','Route resumption'],
+    note:'The fleet manager did not manage this event. They observed it. That is the product.'},
+];
+
+function buildFlow(){
+  var inner = document.getElementById('flow-inner');
+  inner.style.height = TOTAL_H + 'px';
+  [0,16,38,52,67,84].forEach(function(pct){
+    var div = document.createElement('div');
+    div.className = 'phase-divider';
+    div.style.left = pct + '%';
+    inner.appendChild(div);
+  });
+  NODES.forEach(function(n){
+    var el = document.createElement('div');
+    el.className = 'node ' + n.cls;
+    el.id = 'node-' + n.id;
+    el.style.left = n.x + '%';
+    el.style.top = trackCY(n.track) + 'px';
+    el.innerHTML = '<div class="node-body"><div class="node-icon">'+n.icon+'</div><div class="node-label">'+n.label.replace('\n','<br>')+'</div>'+(n.agentName?'<div class="node-agent-name">'+n.agentName+'</div>':'')+'</div>';
+    el.addEventListener('click',function(){ selectNode(n.id); });
+    inner.appendChild(el);
+  });
+  drawConnectors();
+}
+
+function drawConnectors(){
+  var svg = document.getElementById('connector-svg');
+  var inner = document.getElementById('flow-inner');
+  var W = inner.offsetWidth||1100;
+  svg.setAttribute('viewBox','0 0 '+W+' '+TOTAL_H);
+  svg.setAttribute('width',W);
+  svg.setAttribute('height',TOTAL_H);
+  var conns = [
+    ['fault','c3po-assess','var(--truck)'],['fault','lobot-history','var(--truck)'],
+    ['c3po-assess','r2d2-route','var(--agent)'],['c3po-assess','fullbay-query','var(--fullbay)'],
+    ['lobot-history','lobot-ach','var(--payment)'],
+    ['r2d2-route','shop-accepts','var(--agent)'],['r2d2-route','bb8-parts','var(--agent)'],
+    ['r2d2-route','k3po-bay','var(--agent)'],['fullbay-query','shop-accepts','var(--fullbay)'],
+    ['shop-accepts','chopper-alert','var(--shop)'],['bb8-parts','shop-accepts','var(--agent)'],
+    ['shop-accepts','r2d2-transit','var(--agent)'],['chopper-alert','chopper-eta','var(--fleet)'],
+    ['r2d2-transit','geofence','var(--truck)'],['chopper-eta','fleet-inbound','var(--fleet)'],
+    ['geofence','handshake','var(--fullbay)'],['handshake','ig11-lock','var(--enforce)'],
+    ['handshake','yard-inbound','var(--fullbay)'],['handshake','fleet-inbound','var(--fullbay)'],
+    ['yard-inbound','tech-assign','var(--shop)'],['tech-assign','l337','var(--shop)'],
+    ['l337','qa','var(--agent)'],['qa','k2so','var(--truck)'],
+    ['k2so','ig11-release','var(--enforce)'],['k2so','departure','var(--truck)'],
+    ['lobot-settle','ig11-release','var(--payment)'],['ig11-release','departure','var(--enforce)'],
+    ['departure','fleet-close','var(--truck)'],
+  ];
+  conns.forEach(function(conn){
+    var fid=conn[0],tid=conn[1],color=conn[2];
+    var fn=null,tn=null;
+    for(var i=0;i<NODES.length;i++){ if(NODES[i].id===fid) fn=NODES[i]; if(NODES[i].id===tid) tn=NODES[i]; }
+    if(!fn||!tn) return;
+    var x1=(fn.x/100)*W+34,y1=trackCY(fn.track);
+    var x2=(tn.x/100)*W-4,y2=trackCY(tn.track);
+    var mx=(x1+x2)/2;
+    var path=document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d','M '+x1+' '+y1+' C '+mx+' '+y1+' '+mx+' '+y2+' '+x2+' '+y2);
+    path.setAttribute('fill','none');
+    path.setAttribute('stroke',color);
+    path.setAttribute('stroke-width','1.5');
+    path.setAttribute('stroke-opacity','0.55');
+    path.setAttribute('stroke-dasharray',fn.track===tn.track?'none':'4 3');
+    svg.appendChild(path);
+    var angle=Math.atan2(y2-y1,x2-x1),sz=5;
+    var arrow=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    var p1x=x2,p1y=y2;
+    var p2x=x2-sz*Math.cos(angle-.4),p2y=y2-sz*Math.sin(angle-.4);
+    var p3x=x2-sz*Math.cos(angle+.4),p3y=y2-sz*Math.sin(angle+.4);
+    arrow.setAttribute('points',p1x+','+p1y+' '+p2x+','+p2y+' '+p3x+','+p3y);
+    arrow.setAttribute('fill',color);
+    arrow.setAttribute('fill-opacity','0.55');
+    svg.appendChild(arrow);
+  });
+}
+
+var selectedId=null;
+var phaseColors={0:'#A855F7',1:'#60A5FA',2:'#38C4F0',3:'#60A5FA',4:'#34D399',5:'#FBBF24'};
+var phaseNames={0:'Phase 0 -- Fault Detected',1:'Phase 1 -- Pre-negotiation',2:'Phase 2 -- Transit',3:'Phase 3 -- Arrival Confirmation',4:'Phase 4 -- Service Execution',5:'Phase 5 -- Departure'};
+var trackColors={truck:'var(--truck)',agent:'var(--agent)',fullbay:'var(--fullbay)',shop:'var(--shop)',fleet:'var(--fleet)',payment:'var(--payment)',enforce:'var(--enforce)',handshake:'var(--fullbay)'};
+
+function selectNode(id){
+  if(selectedId){
+    var p=document.getElementById('node-'+selectedId);
+    if(p) p.classList.remove('active');
+  }
+  selectedId=id;
+  var el=document.getElementById('node-'+id);
+  if(el) el.classList.add('active');
+  var n=null;
+  for(var i=0;i<NODES.length;i++){ if(NODES[i].id===id){ n=NODES[i]; break; } }
+  if(!n) return;
+  var c=trackColors[n.cls]||'var(--text-mid)';
+  var pc=phaseColors[n.phase]||'var(--text-lo)';
+  var pname=phaseNames[n.phase]||'';
+  var actors=n.actors.map(function(a){ return '<span class="actor-chip">'+a+'</span>'; }).join('');
+  var noteHtml=n.note?'<div class="detail-note">'+n.note+'</div>':'';
+  document.getElementById('detail-panel').innerHTML=
+    '<div class="detail-inner">'
+    +'<div class="detail-header"><div>'
+    +'<div class="detail-title">'+n.title+'</div>'
+    +'<span class="detail-track" style="color:'+c+';border-color:'+c+'44;background:'+c+'11">'+n.trackName+'</span>'
+    +'<span class="detail-phase-tag" style="color:'+pc+';border-color:'+pc+'44;background:'+pc+'0a">'+pname+'</span>'
+    +'</div><div style="font-size:24px">'+n.icon+'</div></div>'
+    +'<div class="detail-desc">'+n.desc+'</div>'
+    +'<div class="detail-actors">'+actors+'</div>'
+    +noteHtml
+    +'</div>';
+}
+
+var toastTimer;
+function showToast(msg){
+  var t=document.getElementById('toast');
+  t.textContent=msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){ t.classList.remove('show'); },2800);
+}
+
+window.addEventListener('load',function(){
+  buildFlow();
+  setTimeout(function(){ selectNode('handshake'); },400);
+});
+window.addEventListener('resize',function(){
+  var svg=document.getElementById('connector-svg');
+  while(svg.firstChild) svg.removeChild(svg.firstChild);
+  drawConnectors();
+});
+</script>
+
+</body>
+</html>
